@@ -15,39 +15,10 @@ import VoronoiDiagram2d
 main =
     let
         cnvs =
-            canvas 800 600
-
-        pointCoordsx =
-            List.range 0 19
-                |> List.map (\n -> n * 40 + 20)
-
-        pointCoordsy =
-            List.range 0 14
-                |> List.map (\n -> n * 40 + 20)
-
-        -- tesselation
-        -- ( perturbationsX, newSeed1 ) =
-        --     Random.list (List.length gridCoordsx) (Random.int -5 5)
-        --         |> (\l -> Random.step l (Random.initialSeed 2))
-        -- ( perturbationsY, _ ) =
-        --     Random.list (List.length gridCoordsy) (Random.int -5 5)
-        --         |> (\l -> Random.step l newSeed1)
-        -- pointCoordsx =
-        --     List.map2 (+) gridCoordsx perturbationsX
-        -- pointCoordsy =
-        --     List.map2 (+) gridCoordsx perturbationsY
-        pointCoordsPure =
-            List.lift2 Tuple.pair pointCoordsx pointCoordsy
-
-        ( randomCoordList, _ ) =
-            Random.pair (Random.int -5 5) (Random.int -5 5)
-                |> Random.list (List.length pointCoordsPure)
-                |> (\l -> Random.step l (Random.initialSeed 2))
+            canvas 1000 800
 
         pointCoords =
-            List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
-                pointCoordsPure
-                randomCoordList
+            perturbedRectangular 24 19 5
 
         points =
             pointCoords
@@ -67,7 +38,7 @@ main =
 
         polygons =
             VoronoiDiagram2d.polygons
-                (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 800 600))
+                (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 1000 800))
                 voronoi
 
         svgPolygons =
@@ -79,6 +50,43 @@ main =
         [ g [] markers
         , g [] svgPolygons
         ]
+
+
+
+-- GRID GENERATION HELPERS
+
+
+rectangular : Int -> Int -> List ( Int, Int )
+rectangular nx ny =
+    let
+        pointCoordsx =
+            List.range 0 nx
+                |> List.map (\n -> n * 40 + 20)
+
+        pointCoordsy =
+            List.range 0 ny
+                |> List.map (\n -> n * 40 + 20)
+    in
+    List.lift2 Tuple.pair pointCoordsx pointCoordsy
+
+
+perturbedRectangular : Int -> Int -> Int -> List ( Int, Int )
+perturbedRectangular nx ny pert =
+    let
+        pointCoordsPure =
+            rectangular nx ny
+
+        intGen =
+            Random.int -pert pert
+
+        ( randomCoordList, _ ) =
+            Random.pair intGen intGen
+                |> Random.list (List.length pointCoordsPure)
+                |> (\l -> Random.step l (Random.initialSeed 2))
+    in
+    List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
+        pointCoordsPure
+        randomCoordList
 
 
 
