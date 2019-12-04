@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Array
 import BoundingBox2d
+import CubicSpline2d exposing (CubicSpline2d)
 import Geometry.Svg
 import LineSegment2d exposing (LineSegment2d)
 import List.Extra as List
@@ -60,7 +61,7 @@ main =
 
         drawingL =
             List.map
-                (Geometry.Svg.lineSegment2d [ stroke "black", fillOpacity "0" ])
+                (Geometry.Svg.lineSegment2d [ stroke "#aaa", fillOpacity "0" ])
                 edgesL
 
         drawingS =
@@ -68,12 +69,21 @@ main =
                 (Geometry.Svg.lineSegment2d [ stroke "red", fillOpacity "0" ])
                 edgesS
 
+        interlockers =
+            List.map wiggly edgesL
+
+        drawingInter =
+            List.map
+                (Geometry.Svg.cubicSpline2d [ stroke "#aaa", fillOpacity "0" ])
+                interlockers
+
         -- |> List.take 12
     in
     cnvs
         [ g [] markers
         , g [] drawingL
         , g [] drawingS
+        , g [] drawingInter
         ]
 
 
@@ -107,7 +117,7 @@ perturbedRectangular nx ny pert =
         ( randomCoordList, _ ) =
             Random.pair intGen intGen
                 |> Random.list (List.length grid)
-                |> (\l -> Random.step l (Random.initialSeed 2))
+                |> (\l -> Random.step l (Random.initialSeed 666))
     in
     List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
         grid
@@ -136,6 +146,27 @@ marker ( xc, yc ) =
         , fillOpacity "0"
         ]
         []
+
+
+wiggly : LineSegment2d Unitless coordinates -> CubicSpline2d Unitless coordinates
+wiggly segment =
+    let
+        ( p1, p2 ) =
+            LineSegment2d.endpoints segment
+    in
+    CubicSpline2d.fromControlPoints
+        p1
+        p2
+        (Point2d.unitless 5 1)
+        (Point2d.unitless 7 4)
+
+
+exampleSpline =
+    CubicSpline2d.fromControlPoints
+        (Point2d.unitless 1 1)
+        (Point2d.unitless 3 4)
+        (Point2d.unitless 5 1)
+        (Point2d.unitless 7 4)
 
 
 
