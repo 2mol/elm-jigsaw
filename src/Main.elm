@@ -4,6 +4,7 @@ import Array
 import Axis2d
 import BoundingBox2d
 import CubicSpline2d exposing (CubicSpline2d)
+import Direction2d
 import Geometry.Svg
 import LineSegment2d exposing (LineSegment2d)
 import List.Extra as List
@@ -183,20 +184,31 @@ baseWiggly =
 fit : Wiggly -> LineSegment2d Unitless () -> Wiggly
 fit ( w1, w2 ) segment =
     let
-        scalePoint =
+        pivot =
             CubicSpline2d.startPoint w1
 
         segmentLen =
             LineSegment2d.length segment |> Quantity.toFloat
 
         scale spline =
-            CubicSpline2d.scaleAbout scalePoint (1 / 200 * segmentLen) spline
+            CubicSpline2d.scaleAbout pivot (1 / 200 * segmentLen) spline
 
         translationVector =
-            Vector2d.from scalePoint (LineSegment2d.startPoint segment)
+            Vector2d.from pivot (LineSegment2d.startPoint segment)
+
+        rotationAngle =
+            LineSegment2d.vector segment
+                |> Vector2d.direction
+                |> Maybe.withDefault (Direction2d.radians 0)
+                |> Direction2d.toAngle
+
+        move w =
+            scale w
+                |> CubicSpline2d.translateBy translationVector
+                |> CubicSpline2d.rotateAround pivot rotationAngle
     in
-    ( CubicSpline2d.translateBy translationVector (scale w1)
-    , CubicSpline2d.translateBy translationVector (scale w2)
+    ( move w1
+    , move w2
     )
 
 
