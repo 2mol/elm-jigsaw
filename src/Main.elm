@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Array
+import Axis2d
 import BoundingBox2d
 import CubicSpline2d exposing (CubicSpline2d)
 import Geometry.Svg
@@ -13,6 +14,7 @@ import Random
 import Result
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Vector2d exposing (Vector2d)
 import VoronoiDiagram2d
 
 
@@ -23,7 +25,7 @@ main =
 
         pointCoords =
             -- randomGrid 1000 800 400
-            perturbedRectangular 24 19 5
+            perturbedRectangular 24 19 4
 
         markers =
             List.map marker pointCoords
@@ -43,11 +45,11 @@ main =
                     (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 1000 800))
                 |> List.map Tuple.second
 
-        lineCoord : LineSegment2d Unitless coordinates -> ( ( Float, Float ), ( Float, Float ) )
+        lineCoord : LineSegment2d Unitless coordinates -> ( ( Int, Int ), ( Int, Int ) )
         lineCoord lineSegment =
             LineSegment2d.endpoints lineSegment
                 |> Tuple.mapBoth Point2d.toUnitless Point2d.toUnitless
-                |> (\( c1, c2 ) -> ( ( c1.x, c1.y ), ( c2.x, c2.y ) ))
+                |> (\( c1, c2 ) -> ( ( round c1.x, round c1.y ), ( round c2.x, round c2.y ) ))
 
         edges =
             List.concatMap Polygon2d.edges polygons
@@ -61,7 +63,7 @@ main =
 
         drawingL =
             List.map
-                (Geometry.Svg.lineSegment2d [ stroke "#aaa", fillOpacity "0" ])
+                (Geometry.Svg.lineSegment2d [ stroke "#999", strokeDasharray "2", fillOpacity "0" ])
                 edgesL
 
         drawingS =
@@ -69,21 +71,18 @@ main =
                 (Geometry.Svg.lineSegment2d [ stroke "red", fillOpacity "0" ])
                 edgesS
 
-        interlockers =
-            List.map wiggly edgesL
+        wigglyDrawing =
+            drawWiggly baseWiggly
 
-        drawingInter =
-            List.map
-                (Geometry.Svg.cubicSpline2d [ stroke "#aaa", fillOpacity "0" ])
-                interlockers
-
-        -- |> List.take 12
+        tongues =
+            List.map (fit baseWiggly >> drawWiggly) edgesL
     in
     cnvs
         [ g [] markers
         , g [] drawingL
         , g [] drawingS
-        , g [] drawingInter
+        , wigglyDrawing
+        , g [] tongues
         ]
 
 
@@ -148,25 +147,66 @@ marker ( xc, yc ) =
         []
 
 
-wiggly : LineSegment2d Unitless coordinates -> CubicSpline2d Unitless coordinates
-wiggly segment =
+
+-- interlocker : LineSegment2d Unitless coordinates -> CubicSpline2d Unitless coordinates
+-- interlocker segment =
+--     let
+--         ( p1, p2 ) =
+--             LineSegment2d.endpoints segment
+--     in
+--     wiggly
+
+
+type alias Wiggly =
+    ( CubicSpline2d Unitless (), CubicSpline2d Unitless () )
+
+
+baseWiggly : Wiggly
+baseWiggly =
     let
-        ( p1, p2 ) =
-            LineSegment2d.endpoints segment
+        baseShape =
+            CubicSpline2d.fromControlPoints
+                -- startpoint
+                (Point2d.unitless 50 120)
+                (Point2d.unitless 200 120)
+                (Point2d.unitless 50 50)
+                -- endpoint
+                (Point2d.unitless 150 50)
+
+        mirroredBaseShape =
+            CubicSpline2d.mirrorAcross Axis2d.y baseShape
+                |> CubicSpline2d.translateBy (Vector2d.unitless 300 0)
     in
-    CubicSpline2d.fromControlPoints
-        p1
-        p2
-        (Point2d.unitless 5 1)
-        (Point2d.unitless 7 4)
+    ( baseShape, mirroredBaseShape )
 
 
-exampleSpline =
-    CubicSpline2d.fromControlPoints
-        (Point2d.unitless 1 1)
-        (Point2d.unitless 3 4)
-        (Point2d.unitless 5 1)
-        (Point2d.unitless 7 4)
+fit : Wiggly -> LineSegment2d Unitless () -> Wiggly
+fit ( w1, w2 ) segment =
+    let
+        scalePoint =
+            CubicSpline2d.startPoint w1
+
+        segmentLen =
+            LineSegment2d.length segment |> Quantity.toFloat
+
+        scale spline =
+            CubicSpline2d.scaleAbout scalePoint (1 / 200 * segmentLen) spline
+
+        translationVector =
+            Vector2d.from scalePoint (LineSegment2d.startPoint segment)
+    in
+    ( CubicSpline2d.translateBy translationVector (scale w1)
+    , CubicSpline2d.translateBy translationVector (scale w2)
+    )
+
+
+drawWiggly : Wiggly -> Svg msg
+drawWiggly ( w1, w2 ) =
+    let
+        drawHalf spline =
+            Geometry.Svg.cubicSpline2d [ stroke "black", fillOpacity "0" ] spline
+    in
+    g [] [ drawHalf w1, drawHalf w2 ]
 
 
 
