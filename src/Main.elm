@@ -34,7 +34,7 @@ main =
 
         pointCoords =
             -- randomGrid params.width params.height 400
-            perturbedRectangular 24 19 4
+            perturbedRectangular 24 19 3
 
         markers =
             List.map marker pointCoords
@@ -93,7 +93,7 @@ main =
         ( flips, _ ) =
             Random.uniform True [ True, False ]
                 |> Random.list (List.length edgesLongInner)
-                |> (\l -> Random.step l (Random.initialSeed 666))
+                |> (\l -> Random.step l (Random.initialSeed 667))
 
         tongues =
             edgesLongInner
@@ -165,7 +165,7 @@ perturbedRectangular nx ny pert =
         ( randomCoordList, _ ) =
             Random.pair intGen intGen
                 |> Random.list (List.length grid)
-                |> (\l -> Random.step l (Random.initialSeed 666))
+                |> (\l -> Random.step l (Random.initialSeed 668))
     in
     List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
         grid
@@ -218,7 +218,7 @@ baseWiggly =
                 -- startpoint
                 (Point2d.unitless 50 120)
                 (Point2d.unitless 200 120)
-                (Point2d.unitless 50 70)
+                (Point2d.unitless 60 70)
                 -- endpoint
                 (Point2d.unitless 150 70)
 
