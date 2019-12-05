@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Angle
 import Array
 import Axis2d
 import BoundingBox2d
@@ -15,19 +16,26 @@ import Random
 import Result
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import Vector2d exposing (Vector2d)
+import Vector2d
 import VoronoiDiagram2d
 
 
+params =
+    { width = 1000
+    , height = 800
+    }
+
+
+main : Svg msg
 main =
     let
         cnvs =
-            canvas 1000 800
+            canvas params.width params.height
 
         pointCoords =
-            randomGrid 1000 800 400
+            -- randomGrid params.width params.height 400
+            perturbedRectangular 24 19 4
 
-        -- perturbedRectangular 24 19 4
         markers =
             List.map marker pointCoords
 
@@ -43,16 +51,17 @@ main =
         polygons =
             voronoi
                 |> VoronoiDiagram2d.polygons
-                    (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 1000 800))
+                    (BoundingBox2d.from
+                        (Point2d.unitless 0 0)
+                        (Point2d.unitless params.width params.height)
+                    )
                 |> List.map Tuple.second
 
         lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
         lineCoord lineSegment =
-            -- LineSegment2d.endpoints lineSegment
-            --     |> Tuple.mapBoth Point2d.toUnitless Point2d.toUnitless
-            --     |> (\( c1, c2 ) -> ( ( round c1.x, round c1.y ), ( round c2.x, round c2.y ) ))
-            LineSegment2d.boundingBox lineSegment
-                |> BoundingBox2d.centerPoint
+            -- a little "trick" to compare edges for equality
+            -- independent of orientation: just compare their midpoint
+            LineSegment2d.midpoint lineSegment
                 |> Point2d.toUnitless
                 |> (\{ x, y } -> ( round x, round y ))
 
@@ -73,23 +82,57 @@ main =
 
         drawingShort =
             List.map
-                (Geometry.Svg.lineSegment2d [ stroke "red", fillOpacity "0" ])
+                (Geometry.Svg.lineSegment2d [ stroke "black", fillOpacity "0" ])
                 edgesShort
 
-        wigglyDrawing =
-            drawWiggly baseWiggly
+        edgesLongInner =
+            List.filter (not << isOnBorder) edgesLong
+
+        -- wigglyDrawing =
+        --     drawWiggly baseWiggly
+        ( flips, _ ) =
+            Random.uniform True [ True, False ]
+                |> Random.list (List.length edgesLongInner)
+                |> (\l -> Random.step l (Random.initialSeed 666))
 
         tongues =
-            List.map (fitWiggly baseWiggly >> drawWiggly) edgesLong
+            edgesLongInner
+                |> List.map2 flip flips
+                |> List.map (fitWiggly baseWiggly)
+                |> List.map drawWiggly
+
+        border =
+            rect
+                [ x "0"
+                , y "0"
+                , width (String.fromInt params.width)
+                , height (String.fromInt params.height)
+                , fillOpacity "0"
+                , stroke "black"
+                ]
+                []
     in
     cnvs
-        [ g [] markers
-        , g [] drawingLong
-        , g [] drawingShort
+        [ -- g [] markers
+          --   g [] drawingLong
+          g [] drawingShort
 
         -- , wigglyDrawing
         , g [] tongues
+        , border
         ]
+
+
+isOnBorder edge =
+    let
+        { x, y } =
+            LineSegment2d.midpoint edge
+                |> Point2d.toUnitless
+
+        ( mx, my ) =
+            ( round x, round y )
+    in
+    mx == 0 || my == 0 || mx == params.width || my == params.height
 
 
 
@@ -217,6 +260,22 @@ fitWiggly ( w1, w2 ) segment =
     )
 
 
+flip : Bool -> LineSegment2d Unitless () -> LineSegment2d Unitless ()
+flip flag segment =
+    if flag then
+        segment
+
+    else
+        let
+            pivot =
+                LineSegment2d.midpoint segment
+
+            angle =
+                Angle.degrees 180
+        in
+        LineSegment2d.rotateAround pivot angle segment
+
+
 drawWiggly : Wiggly -> Svg msg
 drawWiggly ( w1, w2 ) =
     let
@@ -255,15 +314,7 @@ canvas w h children =
 
         border =
             rect
-                [ x "0"
-                , y "0"
-                , width wStr
-                , height hStr
-
-                -- , stroke "red"
-                -- , strokeWidth "2"
-                , fillOpacity "0"
-                ]
+                [ x "0", y "0", width wStr, height hStr, fillOpacity "0" ]
                 []
     in
     svg
