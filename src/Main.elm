@@ -76,7 +76,7 @@ main =
             drawWiggly baseWiggly
 
         tongues =
-            List.map (fit baseWiggly >> drawWiggly) edgesL
+            List.map (fitWiggly baseWiggly >> drawWiggly) edgesL
     in
     cnvs
         [ g [] markers
@@ -181,8 +181,8 @@ baseWiggly =
     ( baseShape, mirroredBaseShape )
 
 
-fit : Wiggly -> LineSegment2d Unitless () -> Wiggly
-fit ( w1, w2 ) segment =
+fitWiggly : Wiggly -> LineSegment2d Unitless () -> Wiggly
+fitWiggly ( w1, w2 ) segment =
     let
         pivot =
             CubicSpline2d.startPoint w1
@@ -202,13 +202,13 @@ fit ( w1, w2 ) segment =
                 |> Maybe.withDefault (Direction2d.radians 0)
                 |> Direction2d.toAngle
 
-        move w =
+        fit w =
             scale w
                 |> CubicSpline2d.translateBy translationVector
-                |> CubicSpline2d.rotateAround pivot rotationAngle
+                |> CubicSpline2d.rotateAround (LineSegment2d.startPoint segment) rotationAngle
     in
-    ( move w1
-    , move w2
+    ( fit w1
+    , fit w2
     )
 
 
