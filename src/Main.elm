@@ -25,9 +25,9 @@ main =
             canvas 1000 800
 
         pointCoords =
-            -- randomGrid 1000 800 400
-            perturbedRectangular 24 19 4
+            randomGrid 1000 800 400
 
+        -- perturbedRectangular 24 19 4
         markers =
             List.map marker pointCoords
 
@@ -46,42 +46,46 @@ main =
                     (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 1000 800))
                 |> List.map Tuple.second
 
-        lineCoord : LineSegment2d Unitless coordinates -> ( ( Int, Int ), ( Int, Int ) )
+        lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
         lineCoord lineSegment =
-            LineSegment2d.endpoints lineSegment
-                |> Tuple.mapBoth Point2d.toUnitless Point2d.toUnitless
-                |> (\( c1, c2 ) -> ( ( round c1.x, round c1.y ), ( round c2.x, round c2.y ) ))
+            -- LineSegment2d.endpoints lineSegment
+            --     |> Tuple.mapBoth Point2d.toUnitless Point2d.toUnitless
+            --     |> (\( c1, c2 ) -> ( ( round c1.x, round c1.y ), ( round c2.x, round c2.y ) ))
+            LineSegment2d.boundingBox lineSegment
+                |> BoundingBox2d.centerPoint
+                |> Point2d.toUnitless
+                |> (\{ x, y } -> ( round x, round y ))
 
         edges =
             List.concatMap Polygon2d.edges polygons
                 |> List.uniqueBy lineCoord
 
-        edgesL =
+        edgesLong =
             List.filter (\l -> Quantity.toFloat (LineSegment2d.length l) >= 20) edges
 
-        edgesS =
+        edgesShort =
             List.filter (\l -> Quantity.toFloat (LineSegment2d.length l) < 20) edges
 
-        drawingL =
+        drawingLong =
             List.map
                 (Geometry.Svg.lineSegment2d [ stroke "#999", strokeDasharray "2", fillOpacity "0" ])
-                edgesL
+                edgesLong
 
-        drawingS =
+        drawingShort =
             List.map
                 (Geometry.Svg.lineSegment2d [ stroke "red", fillOpacity "0" ])
-                edgesS
+                edgesShort
 
         wigglyDrawing =
             drawWiggly baseWiggly
 
         tongues =
-            List.map (fitWiggly baseWiggly >> drawWiggly) edgesL
+            List.map (fitWiggly baseWiggly >> drawWiggly) edgesLong
     in
     cnvs
         [ g [] markers
-        , g [] drawingL
-        , g [] drawingS
+        , g [] drawingLong
+        , g [] drawingShort
 
         -- , wigglyDrawing
         , g [] tongues
@@ -171,9 +175,9 @@ baseWiggly =
                 -- startpoint
                 (Point2d.unitless 50 120)
                 (Point2d.unitless 200 120)
-                (Point2d.unitless 50 50)
+                (Point2d.unitless 50 70)
                 -- endpoint
-                (Point2d.unitless 150 50)
+                (Point2d.unitless 150 70)
 
         mirroredBaseShape =
             CubicSpline2d.mirrorAcross Axis2d.y baseShape
