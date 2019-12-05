@@ -82,7 +82,8 @@ main =
         [ g [] markers
         , g [] drawingL
         , g [] drawingS
-        , wigglyDrawing
+
+        -- , wigglyDrawing
         , g [] tongues
         ]
 
