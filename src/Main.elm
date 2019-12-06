@@ -113,9 +113,10 @@ main =
                 []
     in
     cnvs
-        [ -- g [] markers
-          --   g [] drawingLong
-          g [] drawingShort
+        [ g [] markers
+
+        --   g [] drawingLong
+        , g [] drawingShort
 
         -- , wigglyDrawing
         , g [] tongues
