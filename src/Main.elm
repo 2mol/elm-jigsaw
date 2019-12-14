@@ -20,9 +20,18 @@ import Vector2d
 import VoronoiDiagram2d
 
 
+puzzle =
+    { piecesX = 4
+    , piecesY = 4
+    , gridPertub = 3
+    , seed = Random.initialSeed 667
+    , draftMode = True
+    }
+
+
 params =
-    { width = 1000
-    , height = 800
+    { width = puzzle.piecesX * 40
+    , height = puzzle.piecesY * 40
     }
 
 
@@ -34,7 +43,7 @@ main =
 
         pointCoords =
             -- randomGrid params.width params.height 400
-            perturbedRectangular 24 19 3
+            perturbedRectangular puzzle.piecesX puzzle.piecesY 3
 
         markers =
             List.map marker pointCoords
@@ -80,9 +89,9 @@ main =
                 (Geometry.Svg.lineSegment2d [ stroke "#999", strokeDasharray "2", fillOpacity "0" ])
                 edgesLong
 
-        drawingShort =
+        drawingShort color =
             List.map
-                (Geometry.Svg.lineSegment2d [ stroke "black", fillOpacity "0" ])
+                (Geometry.Svg.lineSegment2d [ stroke color, fillOpacity "0" ])
                 edgesShort
 
         edgesLongInner =
@@ -93,7 +102,7 @@ main =
         ( flips, _ ) =
             Random.uniform True [ True, False ]
                 |> Random.list (List.length edgesLongInner)
-                |> (\l -> Random.step l (Random.initialSeed 667))
+                |> (\l -> Random.step l puzzle.seed)
 
         tongues =
             edgesLongInner
@@ -112,16 +121,19 @@ main =
                 ]
                 []
     in
-    cnvs
-        [ g [] markers
+    cnvs <|
+        if puzzle.draftMode then
+            [ g [] tongues
+            , g [] (drawingShort "red")
+            , g [] markers
+            , g [] drawingLong
+            ]
 
-        --   g [] drawingLong
-        , g [] drawingShort
-
-        -- , wigglyDrawing
-        , g [] tongues
-        , border
-        ]
+        else
+            [ g [] tongues
+            , g [] (drawingShort "black")
+            , border
+            ]
 
 
 isOnBorder edge =
@@ -144,11 +156,11 @@ rectangular : Int -> Int -> List ( Int, Int )
 rectangular nx ny =
     let
         pointCoordsx =
-            List.range 0 nx
+            List.range 0 (nx - 1)
                 |> List.map (\n -> n * 40 + 20)
 
         pointCoordsy =
-            List.range 0 ny
+            List.range 0 (ny - 1)
                 |> List.map (\n -> n * 40 + 20)
     in
     List.lift2 Tuple.pair pointCoordsx pointCoordsy
@@ -166,7 +178,7 @@ perturbedRectangular nx ny pert =
         ( randomCoordList, _ ) =
             Random.pair intGen intGen
                 |> Random.list (List.length grid)
-                |> (\l -> Random.step l (Random.initialSeed 668))
+                |> (\l -> Random.step l puzzle.seed)
     in
     List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
         grid
@@ -177,7 +189,7 @@ randomGrid : Int -> Int -> Int -> List ( Int, Int )
 randomGrid xmax ymax npoints =
     Random.pair (Random.int 0 xmax) (Random.int 0 ymax)
         |> Random.list npoints
-        |> (\l -> Random.step l (Random.initialSeed 3))
+        |> (\l -> Random.step l puzzle.seed)
         |> Tuple.first
 
 
@@ -313,9 +325,15 @@ canvas w h children =
                 (List.range 0 <| xnumtiles - 1)
                 (List.range 0 <| ynumtiles - 1)
 
-        border =
-            rect
-                [ x "0", y "0", width wStr, height hStr, fillOpacity "0" ]
+        -- border =
+        --     rect
+        --         [ x "0", y "0", width wStr, height hStr, fillOpacity "0" ]
+        --         []
+        maybeTiles =
+            if puzzle.draftMode then
+                [ g [] tiles ]
+
+            else
                 []
     in
     svg
@@ -323,10 +341,7 @@ canvas w h children =
         , height hStr
         , viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
         ]
-        [ g [] tiles
-        , border
-        , g [] children
-        ]
+        (maybeTiles ++ [ g [] children ])
 
 
 tile : Int -> Int -> Int -> Svg msg
