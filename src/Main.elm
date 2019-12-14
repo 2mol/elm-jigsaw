@@ -21,11 +21,11 @@ import VoronoiDiagram2d
 
 
 puzzle =
-    { piecesX = 4
-    , piecesY = 4
-    , gridPertub = 3
-    , seed = Random.initialSeed 667
-    , draftMode = True
+    { piecesX = 20
+    , piecesY = 6
+    , gridPerturb = 3
+    , seed = Random.initialSeed 768
+    , draftMode = False
     }
 
 
@@ -43,7 +43,7 @@ main =
 
         pointCoords =
             -- randomGrid params.width params.height 400
-            perturbedRectangular puzzle.piecesX puzzle.piecesY 3
+            perturbedRectangular puzzle.piecesX puzzle.piecesY puzzle.gridPerturb
 
         markers =
             List.map marker pointCoords
@@ -230,6 +230,7 @@ baseWiggly =
             CubicSpline2d.fromControlPoints
                 -- startpoint
                 (Point2d.unitless 50 120)
+                -- control points
                 (Point2d.unitless 200 120)
                 (Point2d.unitless 60 70)
                 -- endpoint
