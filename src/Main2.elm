@@ -1,16 +1,17 @@
 module Main2 exposing (main)
 
+import Dict exposing (Dict)
 import List.Extra as List
 import Random
 import Result
-import Svg exposing (..)
+import Svg exposing (Svg)
 import Svg.Attributes exposing (..)
 
 
 puzzle =
     { piecesX = 18
     , piecesY = 13
-    , gridPerturb = 3
+    , gridPerturb = 4
     , seed = Random.initialSeed 1
     , draftMode = True
     }
@@ -22,6 +23,18 @@ params =
     }
 
 
+type alias Point =
+    { x : Int
+    , y : Int
+    }
+
+
+type alias Edge =
+    { start : Point
+    , end : Point
+    }
+
+
 main : Svg msg
 main =
     let
@@ -29,16 +42,20 @@ main =
             canvas params.width params.height
 
         grid =
-            rectangular puzzle.piecesX puzzle.piecesY
-                |> perturbGrid puzzle.gridPerturb
+            rectangularGrid puzzle.piecesX puzzle.piecesY
+                |> perturbGrid
 
         -- randomGrid params.width params.height 400
         -- perturbedRectangular puzzle.piecesX puzzle.piecesY puzzle.gridPerturb
         markers =
-            List.map marker grid
+            Dict.values grid
+                |> List.map marker
+
+        edges =
+            calcEdges grid
 
         border =
-            rect
+            Svg.rect
                 [ x "0"
                 , y "0"
                 , width (String.fromInt params.width)
@@ -50,7 +67,14 @@ main =
     in
     cnvs <|
         if puzzle.draftMode then
-            [ g [] markers ]
+            [ Svg.g [] markers
+
+            -- , edge
+            --     { start = { x = 0, y = 0 }
+            --     , end = { x = 100, y = 100 }
+            --     }
+            , Svg.g [] <| List.map edge edges
+            ]
             -- [ g [] tongues
             -- , g [] (drawingShort "red")
             -- , g [] markers
@@ -65,44 +89,105 @@ main =
             []
 
 
-rectangular : Int -> Int -> List ( Int, Int )
-rectangular nx ny =
+rectangularGrid : Int -> Int -> Dict ( Int, Int ) Point
+rectangularGrid nx ny =
     let
-        pointCoordsx =
+        indicesX =
             List.range 0 nx
-                |> List.map (\n -> n * 40)
 
-        pointCoordsy =
+        -- |> List.map (\n -> n * 40)
+        indicesY =
             List.range 0 ny
-                |> List.map (\n -> n * 40)
+
+        -- |> List.map (\n -> n * 40)
+        indices =
+            List.lift2 Tuple.pair indicesX indicesY
     in
-    List.lift2 Tuple.pair pointCoordsx pointCoordsy
+    -- List.indexedMap
+    --     (\ix cx ->
+    --         List.indexedMap (\iy cy -> ( ( ix, iy ), { x = cx, y = cy } ))
+    --             pointCoordsy
+    --     )
+    --     pointCoordsx
+    indices
+        |> List.map (\( ix, iy ) -> ( ( ix, iy ), { x = ix * 40, y = iy * 40 } ))
+        |> Dict.fromList
 
 
-perturbGrid : Int -> List ( Int, Int ) -> List ( Int, Int )
-perturbGrid pert grid =
+perturbGrid : Dict ( Int, Int ) Point -> Dict ( Int, Int ) Point
+perturbGrid grid =
     let
+        pert =
+            puzzle.gridPerturb
+
         randomPair =
             Random.pair
                 (Random.int -pert pert)
                 (Random.int -pert pert)
 
         randomPairListGen =
-            Random.list (List.length grid) randomPair
+            Random.list (Dict.size grid) randomPair
 
         ( randomPairList, _ ) =
             Random.step randomPairListGen puzzle.seed
-
-        addPair ( cx, cy ) ( px, py ) =
-            ( cx + px |> snapToEdges pert params.width
-            , cy + py |> snapToEdges pert params.height
-            )
     in
-    List.map2 addPair randomPairList grid
+    -- indices
+    --     |> List.map (\( ix, iy ) -> ( ( ix, iy ), { x = ix * 40, y = iy * 40 } ))
+    --     |> Dict.fromList
+    Dict.values grid
+        |> List.map2 (\( rx, ry ) point -> { x = point.x + rx, y = point.y + ry }) randomPairList
+        |> List.map snapToBorder
+        |> List.map2 Tuple.pair (Dict.keys grid)
+        |> Dict.fromList
 
 
-snapToEdges : Int -> Int -> Int -> Int
-snapToEdges howClose maxCoord coord =
+
+-- perturbGrid : List (List ( Int, Int )) -> List (List ( Int, Int ))
+-- perturbGrid grid =
+--     let
+--         pert =
+--             puzzle.gridPerturb
+--         randomPair =
+--             Random.pair
+--                 (Random.int -pert pert)
+--                 (Random.int -pert pert)
+--         randomPairListGen =
+--             Random.list (List.length grid) randomPair
+--         ( randomPairList, _ ) =
+--             Random.step randomPairListGen puzzle.seed
+--         addPair ( cx, cy ) ( px, py ) =
+--             ( cx + px |> snapToEdges pert params.width
+--             , cy + py |> snapToEdges pert params.height
+--             )
+--         subListMap coords =
+--             Random.list (List.length grid) randomPair
+--                 |> (\gen -> Random.step gen puzzle.seed)
+--     in
+--     List.map
+--         (\coords -> List.map2 addPair randomPairList coords)
+--         grid
+-- perturbCoord : ( Int, Int ) -> Random.Seed -> ( ( Int, Int ), Random.Seed )
+-- perturbCoord ( cx, cy ) seed =
+--     let
+--         pert =
+--             puzzle.gridPerturb
+--         pairGen =
+--             Random.pair
+--                 (Random.int -pert pert)
+--                 (Random.int -pert pert)
+--     in
+--     Random.step pairGen seed
+
+
+snapToBorder : Point -> Point
+snapToBorder { x, y } =
+    { x = snapToBorder_ puzzle.gridPerturb params.width x
+    , y = snapToBorder_ puzzle.gridPerturb params.height y
+    }
+
+
+snapToBorder_ : Int -> Int -> Int -> Int
+snapToBorder_ howClose maxCoord coord =
     if coord - howClose <= 0 then
         0
 
@@ -113,41 +198,85 @@ snapToEdges howClose maxCoord coord =
         coord
 
 
+calcEdges : Dict ( Int, Int ) Point -> List Edge
+calcEdges grid =
+    -- let
+    --     pointIndicesX =
+    --         List.range 0 (List.length grid)
+    --     pointIndicesY =
+    --         List.range 0 (List.length col)
+    --             |> List.map (\n -> n * 40)
+    --     -- tryConnect xIndex yIndex=
+    -- in
+    -- List.map
+    --     (\xIndex ->
+    --         List.map (\yIndex -> { x = cx, y = cy })
+    --             pointIndicesY
+    --     )
+    --     pointIndicesX
+    let
+        maybeConnect indices point =
+            Dict.get indices grid
+                |> Maybe.map (\point2 -> { start = point, end = point2 })
 
--- perturbedRectangular : Int -> Int -> Int -> List ( Int, Int )
--- perturbedRectangular nx ny pert =
---     let
---         grid =
---             rectangular nx ny
---         intGen =
---             Random.int -pert pert
---         ( randomCoordList, _ ) =
---             Random.pair intGen intGen
---                 |> Random.list (List.length grid)
---                 |> (\l -> Random.step l puzzle.seed)
---     in
---     List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
---         grid
---         randomCoordList
--- randomGrid : Int -> Int -> Int -> List ( Int, Int )
--- randomGrid xmax ymax npoints =
---     Random.pair (Random.int 0 xmax) (Random.int 0 ymax)
---         |> Random.list npoints
---         |> (\l -> Random.step l puzzle.seed)
---         |> Tuple.first
+        maybeConnect2 ( ix, iy ) point =
+            [ maybeConnect ( ix + 1, iy ) point
+            , maybeConnect ( ix, iy + 1 ) point
+            ]
+    in
+    grid
+        |> Dict.map maybeConnect2
+        |> Dict.values
+        |> List.concatMap identity
+        |> List.filterMap identity
+
+
+tryConnect : List (List Point) -> Int -> Int -> Maybe Edge
+tryConnect grid xIndex yIndex =
+    case List.getAt xIndex grid of
+        Just yCol ->
+            case List.getAt yIndex grid of
+                Just point ->
+                    Nothing
+
+                _ ->
+                    Nothing
+
+        _ ->
+            Nothing
+
+
+
 -- SVG HELPERS
 
 
-marker : ( Int, Int ) -> Svg msg
-marker ( xc, yc ) =
-    circle
-        [ cx <| String.fromInt xc
-        , cy <| String.fromInt yc
+marker : Point -> Svg msg
+marker { x, y } =
+    Svg.circle
+        [ cx <| String.fromInt x
+        , cy <| String.fromInt y
         , r "2"
-        , stroke "#666666"
+        , stroke "#666"
         , fillOpacity "0"
         ]
         []
+
+
+edge : Edge -> Svg msg
+edge { start, end } =
+    Svg.line
+        [ x1 <| String.fromInt start.x
+        , y1 <| String.fromInt start.y
+        , x2 <| String.fromInt end.x
+        , y2 <| String.fromInt end.y
+        , strokeWidth "1"
+        , stroke "#666"
+        ]
+        []
+
+
+
+-- CANVAS
 
 
 canvas : Int -> Int -> List (Svg msg) -> Svg msg
@@ -179,17 +308,17 @@ canvas w h children =
         --         []
         maybeTiles =
             if puzzle.draftMode then
-                [ g [] tiles ]
+                [ Svg.g [] tiles ]
 
             else
                 []
     in
-    svg
+    Svg.svg
         [ width wStr
         , height hStr
         , viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
         ]
-        (maybeTiles ++ [ g [] children ])
+        (maybeTiles ++ [ Svg.g [] children ])
 
 
 tile : Int -> Int -> Int -> Svg msg
@@ -202,7 +331,7 @@ tile size xc yc =
             else
                 "#ffffff"
     in
-    rect
+    Svg.rect
         [ x (String.fromInt (xc * size))
         , y (String.fromInt (yc * size))
         , width (String.fromInt size)
