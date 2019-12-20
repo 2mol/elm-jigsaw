@@ -36,6 +36,80 @@ type alias Edge =
     }
 
 
+type alias Curve3 =
+    { start : Point
+    , startControl : Point
+    , middle : Point
+    , middleControl : Point
+    , endControl : Point
+    , end : Point
+    }
+
+
+testCurve : Curve3
+testCurve =
+    --"M 10 80 C 40 10, 65 10, 95 80 S 150 50, 180 80"
+    { start = Point 10 80
+    , startControl = Point 40 10
+    , middleControl = Point 65 10
+    , middle = Point 95 80
+    , endControl = Point 150 50
+    , end = Point 180 80
+    }
+
+
+basicTongue : Curve3
+basicTongue =
+    --"M 10 80 C 40 10, 65 10, 95 80 S 150 50, 180 80"
+    { start = Point 0 0
+    , startControl = Point 70 0
+    , middleControl = Point 10 30
+    , middle = Point 50 30
+    , endControl = Point 30 0
+    , end = Point 100 0
+    }
+
+
+drawCurve3 : Curve3 -> Svg msg
+drawCurve3 curve =
+    let
+        pieces =
+            [ "M "
+                ++ String.fromInt curve.start.x
+                ++ " "
+                ++ String.fromInt curve.start.y
+            , "C "
+                ++ String.fromInt curve.startControl.x
+                ++ " "
+                ++ String.fromInt curve.startControl.y
+                ++ ", "
+                ++ String.fromInt curve.middleControl.x
+                ++ " "
+                ++ String.fromInt curve.middleControl.y
+                ++ ", "
+                ++ String.fromInt curve.middle.x
+                ++ " "
+                ++ String.fromInt curve.middle.y
+            , "S "
+                ++ String.fromInt curve.endControl.x
+                ++ " "
+                ++ String.fromInt curve.endControl.y
+                ++ ", "
+                ++ String.fromInt curve.end.x
+                ++ " "
+                ++ String.fromInt curve.end.y
+            ]
+    in
+    Svg.path
+        [ stroke "black"
+        , fill "transparent"
+
+        -- , d "M 10 80 C 40 10, 65 10, 95 80 S 150 50, 180 80"
+        , d <| String.join "" pieces
+        ]
+        []
+
+
 main : Svg msg
 main =
     let
@@ -48,7 +122,7 @@ main =
 
         markers =
             Dict.values grid
-                |> List.map marker
+                |> List.map drawMarker
 
         isOnBorder edge =
             False
@@ -81,6 +155,7 @@ main =
             --     , end = { x = 100, y = 100 }
             --     }
             , Svg.g [] <| List.map drawEdge edges
+            , drawCurve3 basicTongue
             , border
             ]
             -- [ g [] tongues
@@ -94,7 +169,7 @@ main =
             -- , g [] (drawingShort "black")
             -- , border
             -- ]
-            []
+            [ border ]
 
 
 rectangularGrid : Int -> Int -> Dict ( Int, Int ) Point
@@ -191,11 +266,11 @@ calcEdges grid =
 
 
 
--- SVG HELPERS
+-- SVG DRAWING FUNCTIONS
 
 
-marker : Point -> Svg msg
-marker { x, y } =
+drawMarker : Point -> Svg msg
+drawMarker { x, y } =
     Svg.circle
         [ cx <| String.fromInt x
         , cy <| String.fromInt y
@@ -220,7 +295,7 @@ drawEdge { start, end } =
 
 
 
--- CANVAS
+-- SVG CANVAS HELPERS
 
 
 canvas : Int -> Int -> List (Svg msg) -> Svg msg
