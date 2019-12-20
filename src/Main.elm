@@ -21,8 +21,8 @@ import VoronoiDiagram2d
 
 
 puzzle =
-    { piecesX = 20
-    , piecesY = 6
+    { piecesX = 18
+    , piecesY = 13
     , gridPerturb = 3
     , seed = Random.initialSeed 768
     , draftMode = False
