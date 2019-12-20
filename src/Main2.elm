@@ -60,13 +60,63 @@ testCurve =
 
 basicTongue : Curve3
 basicTongue =
-    --"M 10 80 C 40 10, 65 10, 95 80 S 150 50, 180 80"
     { start = Point 0 0
     , startControl = Point 70 0
     , middleControl = Point 10 30
     , middle = Point 50 30
     , endControl = Point 30 0
     , end = Point 100 0
+    }
+
+
+badTongue : Curve3
+badTongue =
+    { start = Point 0 0
+    , startControl = Point 0 0
+    , middleControl = Point 50 30
+    , middle = Point 50 30
+    , endControl = Point 100 0
+    , end = Point 100 0
+    }
+
+
+norm : Point -> Int
+norm vect =
+    (vect.x ^ 2 + vect.y ^ 2)
+        |> toFloat
+        |> sqrt
+        |> round
+
+
+makeTongue : Edge -> Curve3
+makeTongue { start, end } =
+    let
+        vEdge =
+            { x = end.x - start.x
+            , y = end.y - start.y
+            }
+
+        vPerp =
+            { x = 1
+            , y = -vEdge.x // vEdge.y
+            }
+
+        vPerpN =
+            { x = 15 * vPerp.x // norm vPerp
+            , y = 15 * vPerp.y // norm vPerp
+            }
+
+        middle =
+            { x = vPerpN.x + (start.x + end.x) // 2
+            , y = vPerpN.y + (start.y + end.y) // 2
+            }
+    in
+    { start = Point start.x start.y
+    , startControl = Point start.x start.y
+    , middleControl = Point middle.x middle.y
+    , middle = Point middle.x middle.y
+    , endControl = Point end.x end.y
+    , end = Point end.x end.y
     }
 
 
@@ -135,6 +185,9 @@ main =
             calcEdges grid
                 |> List.filter (not << isOnBorder)
 
+        tongues =
+            List.map makeTongue edges
+
         border =
             Svg.rect
                 [ x "0"
@@ -155,7 +208,7 @@ main =
             --     , end = { x = 100, y = 100 }
             --     }
             , Svg.g [] <| List.map drawEdge edges
-            , drawCurve3 basicTongue
+            , Svg.g [] <| List.map drawCurve3 tongues
             , border
             ]
             -- [ g [] tongues
