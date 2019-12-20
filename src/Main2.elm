@@ -12,7 +12,7 @@ puzzle =
     , piecesY = 13
     , gridPerturb = 4
     , seed = Random.initialSeed 2
-    , draftMode = True
+    , draftMode = False
     , pixelsPerCell = 50
     }
 
@@ -43,6 +43,198 @@ type alias Curve3 =
     , endControl : Point
     , end : Point
     }
+
+
+main : Svg msg
+main =
+    let
+        cnvs =
+            canvas params.width params.height
+
+        grid =
+            rectangularGrid puzzle.piecesX puzzle.piecesY
+                |> perturbGrid
+
+        markers =
+            Dict.values grid
+                |> List.map drawMarker
+
+        isOnBorder edge =
+            False
+                || (edge.start.x == 0 && edge.end.x == 0)
+                || (edge.start.y == 0 && edge.end.y == 0)
+                || (edge.start.x == params.width && edge.end.x == params.width)
+                || (edge.start.y == params.height && edge.end.y == params.height)
+
+        edges =
+            calcEdges grid
+                |> List.filter (not << isOnBorder)
+
+        ( flips, _ ) =
+            Random.uniform True [ True, False ]
+                |> Random.list (List.length edges)
+                |> (\l -> Random.step l puzzle.seed)
+
+        tongues =
+            List.map2 makeTongue flips edges
+
+        border =
+            Svg.rect
+                [ x "0"
+                , y "0"
+                , width (String.fromInt params.width)
+                , height (String.fromInt params.height)
+                , fillOpacity "0"
+                , stroke "black"
+                ]
+                []
+    in
+    cnvs <|
+        if puzzle.draftMode then
+            [ Svg.g [] []
+
+            -- , Svg.g [] markers
+            -- , Svg.g [] <| List.map drawEdge edges
+            , Svg.g [] <| List.map drawCurve3 tongues
+            , border
+            ]
+            -- [ g [] tongues
+            -- , g [] (drawingShort "red")
+            -- , g [] markers
+            -- , g [] drawingLong
+            -- ]
+
+        else
+            -- [ g [] tongues
+            -- , g [] (drawingShort "black")
+            -- , border
+            -- ]
+            [ Svg.g [] <| List.map drawCurve3 tongues
+            , border
+            ]
+
+
+rectangularGrid : Int -> Int -> Dict ( Int, Int ) Point
+rectangularGrid nx ny =
+    let
+        indicesX =
+            List.range 0 nx
+
+        indicesY =
+            List.range 0 ny
+
+        indices =
+            List.lift2 Tuple.pair indicesX indicesY
+    in
+    indices
+        |> List.map
+            (\( ix, iy ) ->
+                ( ( ix, iy )
+                , { x = ix * puzzle.pixelsPerCell
+                  , y = iy * puzzle.pixelsPerCell
+                  }
+                )
+            )
+        |> Dict.fromList
+
+
+perturbGrid : Dict ( Int, Int ) Point -> Dict ( Int, Int ) Point
+perturbGrid grid =
+    let
+        pert =
+            puzzle.gridPerturb
+
+        randomPair =
+            Random.pair
+                (Random.int -pert pert)
+                (Random.int -pert pert)
+
+        randomPairListGen =
+            Random.list (Dict.size grid) randomPair
+
+        ( randomPairList, _ ) =
+            Random.step randomPairListGen puzzle.seed
+    in
+    Dict.values grid
+        |> List.map2 (\( rx, ry ) point -> { x = point.x + rx, y = point.y + ry }) randomPairList
+        -- optional: keep borders straight
+        |> List.map snapToBorder
+        |> List.map2 Tuple.pair (Dict.keys grid)
+        |> Dict.fromList
+
+
+snapToBorder : Point -> Point
+snapToBorder { x, y } =
+    { x = snapToBorder_ puzzle.gridPerturb params.width x
+    , y = snapToBorder_ puzzle.gridPerturb params.height y
+    }
+
+
+snapToBorder_ : Int -> Int -> Int -> Int
+snapToBorder_ howClose maxCoord coord =
+    if coord - howClose <= 0 then
+        0
+
+    else if coord + howClose >= maxCoord then
+        maxCoord
+
+    else
+        coord
+
+
+calcEdges : Dict ( Int, Int ) Point -> List Edge
+calcEdges grid =
+    let
+        maybeConnect indices point =
+            Dict.get indices grid
+                |> Maybe.map (\point2 -> { start = point, end = point2 })
+
+        horizontals =
+            grid
+                |> Dict.map (\( ix, iy ) point -> maybeConnect ( ix + 1, iy ) point)
+                |> Dict.toList
+                |> List.sortBy (\( ( _, iy ), _ ) -> iy)
+                |> List.map Tuple.second
+                |> List.filterMap identity
+
+        verticals =
+            grid
+                |> Dict.map (\( ix, iy ) point -> maybeConnect ( ix, iy + 1 ) point)
+                |> Dict.toList
+                |> List.sortBy (\( ( ix, _ ), _ ) -> ix)
+                |> List.map Tuple.second
+                |> List.filterMap identity
+    in
+    horizontals ++ verticals
+
+
+
+-- SVG DRAWING FUNCTIONS
+
+
+drawMarker : Point -> Svg msg
+drawMarker { x, y } =
+    Svg.circle
+        [ cx <| String.fromInt x
+        , cy <| String.fromInt y
+        , r "2"
+        , stroke "#666"
+        , fillOpacity "0"
+        ]
+        []
+
+
+drawEdge : Edge -> Svg msg
+drawEdge { start, end } =
+    Svg.line
+        [ x1 <| String.fromInt start.x
+        , y1 <| String.fromInt start.y
+        , x2 <| String.fromInt end.x
+        , y2 <| String.fromInt end.y
+        , strokeWidth "1"
+        , stroke "#c66"
+        ]
+        []
 
 
 testCurve : Curve3
@@ -175,200 +367,10 @@ drawCurve3 curve =
     in
     Svg.path
         [ stroke "black"
-        , fill "transparent"
+        , fill "none"
 
         -- , d "M 10 80 C 40 10, 65 10, 95 80 S 150 50, 180 80"
         , d <| String.join "" pieces
-        ]
-        []
-
-
-main : Svg msg
-main =
-    let
-        cnvs =
-            canvas params.width params.height
-
-        grid =
-            rectangularGrid puzzle.piecesX puzzle.piecesY
-                |> perturbGrid
-
-        markers =
-            Dict.values grid
-                |> List.map drawMarker
-
-        isOnBorder edge =
-            False
-                || (edge.start.x == 0 && edge.end.x == 0)
-                || (edge.start.y == 0 && edge.end.y == 0)
-                || (edge.start.x == params.width && edge.end.x == params.width)
-                || (edge.start.y == params.height && edge.end.y == params.height)
-
-        edges =
-            calcEdges grid
-                |> List.filter (not << isOnBorder)
-
-        ( flips, _ ) =
-            Random.uniform True [ True, False ]
-                |> Random.list (List.length edges)
-                |> (\l -> Random.step l puzzle.seed)
-
-        tongues =
-            List.map2 makeTongue flips edges
-
-        border =
-            Svg.rect
-                [ x "0"
-                , y "0"
-                , width (String.fromInt params.width)
-                , height (String.fromInt params.height)
-                , fillOpacity "0"
-                , stroke "black"
-                ]
-                []
-    in
-    cnvs <|
-        if puzzle.draftMode then
-            [ Svg.g [] []
-
-            -- , Svg.g [] markers
-            -- , Svg.g [] <| List.map drawEdge edges
-            , Svg.g [] <| List.map drawCurve3 tongues
-            , border
-            ]
-            -- [ g [] tongues
-            -- , g [] (drawingShort "red")
-            -- , g [] markers
-            -- , g [] drawingLong
-            -- ]
-
-        else
-            -- [ g [] tongues
-            -- , g [] (drawingShort "black")
-            -- , border
-            -- ]
-            [ border ]
-
-
-rectangularGrid : Int -> Int -> Dict ( Int, Int ) Point
-rectangularGrid nx ny =
-    let
-        indicesX =
-            List.range 0 nx
-
-        indicesY =
-            List.range 0 ny
-
-        indices =
-            List.lift2 Tuple.pair indicesX indicesY
-    in
-    indices
-        |> List.map
-            (\( ix, iy ) ->
-                ( ( ix, iy )
-                , { x = ix * puzzle.pixelsPerCell
-                  , y = iy * puzzle.pixelsPerCell
-                  }
-                )
-            )
-        |> Dict.fromList
-
-
-perturbGrid : Dict ( Int, Int ) Point -> Dict ( Int, Int ) Point
-perturbGrid grid =
-    let
-        pert =
-            puzzle.gridPerturb
-
-        randomPair =
-            Random.pair
-                (Random.int -pert pert)
-                (Random.int -pert pert)
-
-        randomPairListGen =
-            Random.list (Dict.size grid) randomPair
-
-        ( randomPairList, _ ) =
-            Random.step randomPairListGen puzzle.seed
-    in
-    Dict.values grid
-        |> List.map2 (\( rx, ry ) point -> { x = point.x + rx, y = point.y + ry }) randomPairList
-        -- optional: keep borders straight
-        |> List.map snapToBorder
-        |> List.map2 Tuple.pair (Dict.keys grid)
-        |> Dict.fromList
-
-
-snapToBorder : Point -> Point
-snapToBorder { x, y } =
-    { x = snapToBorder_ puzzle.gridPerturb params.width x
-    , y = snapToBorder_ puzzle.gridPerturb params.height y
-    }
-
-
-snapToBorder_ : Int -> Int -> Int -> Int
-snapToBorder_ howClose maxCoord coord =
-    if coord - howClose <= 0 then
-        0
-
-    else if coord + howClose >= maxCoord then
-        maxCoord
-
-    else
-        coord
-
-
-calcEdges : Dict ( Int, Int ) Point -> List Edge
-calcEdges grid =
-    let
-        maybeConnect indices point =
-            Dict.get indices grid
-                |> Maybe.map (\point2 -> { start = point, end = point2 })
-
-        horizontals =
-            grid
-                |> Dict.map (\( ix, iy ) point -> maybeConnect ( ix + 1, iy ) point)
-                |> Dict.toList
-                |> List.sortBy (\( ( _, iy ), _ ) -> iy)
-                |> List.map Tuple.second
-                |> List.filterMap identity
-
-        verticals =
-            grid
-                |> Dict.map (\( ix, iy ) point -> maybeConnect ( ix, iy + 1 ) point)
-                |> Dict.toList
-                |> List.sortBy (\( ( ix, _ ), _ ) -> ix)
-                |> List.map Tuple.second
-                |> List.filterMap identity
-    in
-    horizontals ++ verticals
-
-
-
--- SVG DRAWING FUNCTIONS
-
-
-drawMarker : Point -> Svg msg
-drawMarker { x, y } =
-    Svg.circle
-        [ cx <| String.fromInt x
-        , cy <| String.fromInt y
-        , r "2"
-        , stroke "#666"
-        , fillOpacity "0"
-        ]
-        []
-
-
-drawEdge : Edge -> Svg msg
-drawEdge { start, end } =
-    Svg.line
-        [ x1 <| String.fromInt start.x
-        , y1 <| String.fromInt start.y
-        , x2 <| String.fromInt end.x
-        , y2 <| String.fromInt end.y
-        , strokeWidth "1"
-        , stroke "#c66"
         ]
         []
 
