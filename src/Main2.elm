@@ -14,12 +14,13 @@ puzzle =
     , gridPerturb = 4
     , seed = Random.initialSeed 1
     , draftMode = True
+    , pixelsPerCell = 40
     }
 
 
 params =
-    { width = puzzle.piecesX * 40
-    , height = puzzle.piecesY * 40
+    { width = puzzle.piecesX * puzzle.pixelsPerCell
+    , height = puzzle.piecesY * puzzle.pixelsPerCell
     }
 
 
@@ -45,8 +46,6 @@ main =
             rectangularGrid puzzle.piecesX puzzle.piecesY
                 |> perturbGrid
 
-        -- randomGrid params.width params.height 400
-        -- perturbedRectangular puzzle.piecesX puzzle.piecesY puzzle.gridPerturb
         markers =
             Dict.values grid
                 |> List.map marker
@@ -95,22 +94,21 @@ rectangularGrid nx ny =
         indicesX =
             List.range 0 nx
 
-        -- |> List.map (\n -> n * 40)
         indicesY =
             List.range 0 ny
 
-        -- |> List.map (\n -> n * 40)
         indices =
             List.lift2 Tuple.pair indicesX indicesY
     in
-    -- List.indexedMap
-    --     (\ix cx ->
-    --         List.indexedMap (\iy cy -> ( ( ix, iy ), { x = cx, y = cy } ))
-    --             pointCoordsy
-    --     )
-    --     pointCoordsx
     indices
-        |> List.map (\( ix, iy ) -> ( ( ix, iy ), { x = ix * 40, y = iy * 40 } ))
+        |> List.map
+            (\( ix, iy ) ->
+                ( ( ix, iy )
+                , { x = ix * puzzle.pixelsPerCell
+                  , y = iy * puzzle.pixelsPerCell
+                  }
+                )
+            )
         |> Dict.fromList
 
 
@@ -131,52 +129,12 @@ perturbGrid grid =
         ( randomPairList, _ ) =
             Random.step randomPairListGen puzzle.seed
     in
-    -- indices
-    --     |> List.map (\( ix, iy ) -> ( ( ix, iy ), { x = ix * 40, y = iy * 40 } ))
-    --     |> Dict.fromList
     Dict.values grid
         |> List.map2 (\( rx, ry ) point -> { x = point.x + rx, y = point.y + ry }) randomPairList
+        -- optional: keep borders straight
         |> List.map snapToBorder
         |> List.map2 Tuple.pair (Dict.keys grid)
         |> Dict.fromList
-
-
-
--- perturbGrid : List (List ( Int, Int )) -> List (List ( Int, Int ))
--- perturbGrid grid =
---     let
---         pert =
---             puzzle.gridPerturb
---         randomPair =
---             Random.pair
---                 (Random.int -pert pert)
---                 (Random.int -pert pert)
---         randomPairListGen =
---             Random.list (List.length grid) randomPair
---         ( randomPairList, _ ) =
---             Random.step randomPairListGen puzzle.seed
---         addPair ( cx, cy ) ( px, py ) =
---             ( cx + px |> snapToEdges pert params.width
---             , cy + py |> snapToEdges pert params.height
---             )
---         subListMap coords =
---             Random.list (List.length grid) randomPair
---                 |> (\gen -> Random.step gen puzzle.seed)
---     in
---     List.map
---         (\coords -> List.map2 addPair randomPairList coords)
---         grid
--- perturbCoord : ( Int, Int ) -> Random.Seed -> ( ( Int, Int ), Random.Seed )
--- perturbCoord ( cx, cy ) seed =
---     let
---         pert =
---             puzzle.gridPerturb
---         pairGen =
---             Random.pair
---                 (Random.int -pert pert)
---                 (Random.int -pert pert)
---     in
---     Random.step pairGen seed
 
 
 snapToBorder : Point -> Point
@@ -200,20 +158,6 @@ snapToBorder_ howClose maxCoord coord =
 
 calcEdges : Dict ( Int, Int ) Point -> List Edge
 calcEdges grid =
-    -- let
-    --     pointIndicesX =
-    --         List.range 0 (List.length grid)
-    --     pointIndicesY =
-    --         List.range 0 (List.length col)
-    --             |> List.map (\n -> n * 40)
-    --     -- tryConnect xIndex yIndex=
-    -- in
-    -- List.map
-    --     (\xIndex ->
-    --         List.map (\yIndex -> { x = cx, y = cy })
-    --             pointIndicesY
-    --     )
-    --     pointIndicesX
     let
         maybeConnect indices point =
             Dict.get indices grid
@@ -229,21 +173,6 @@ calcEdges grid =
         |> Dict.values
         |> List.concatMap identity
         |> List.filterMap identity
-
-
-tryConnect : List (List Point) -> Int -> Int -> Maybe Edge
-tryConnect grid xIndex yIndex =
-    case List.getAt xIndex grid of
-        Just yCol ->
-            case List.getAt yIndex grid of
-                Just point ->
-                    Nothing
-
-                _ ->
-                    Nothing
-
-        _ ->
-            Nothing
 
 
 
