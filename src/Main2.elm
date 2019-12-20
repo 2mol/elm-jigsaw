@@ -3,7 +3,6 @@ module Main2 exposing (main)
 import Dict exposing (Dict)
 import List.Extra as List
 import Random
-import Result
 import Svg exposing (Svg)
 import Svg.Attributes exposing (..)
 
@@ -12,7 +11,7 @@ puzzle =
     { piecesX = 18
     , piecesY = 13
     , gridPerturb = 4
-    , seed = Random.initialSeed 1
+    , seed = Random.initialSeed 2
     , draftMode = True
     , pixelsPerCell = 50
     }
@@ -80,16 +79,15 @@ badTongue =
     }
 
 
-norm : Point -> Int
+norm : Point -> Float
 norm vect =
     (vect.x ^ 2 + vect.y ^ 2)
         |> toFloat
         |> sqrt
-        |> round
 
 
-makeTongue : Edge -> Curve3
-makeTongue { start, end } =
+makeTongue : Bool -> Edge -> Curve3
+makeTongue flip { start, end } =
     let
         vEdge =
             { x = end.x - start.x
@@ -97,25 +95,50 @@ makeTongue { start, end } =
             }
 
         vPerp =
-            { x = 1
-            , y = -vEdge.x // vEdge.y
-            }
+            if start.y /= end.y then
+                { x = 1
+                , y = toFloat -vEdge.x / toFloat vEdge.y |> round
+                }
+
+            else
+                --if start.x /= end.x
+                { x = toFloat -vEdge.y / toFloat vEdge.x |> round
+                , y = 1
+                }
+
+        flipMult =
+            if flip then
+                -1
+
+            else
+                1
 
         vPerpN =
-            { x = 15 * vPerp.x // norm vPerp
-            , y = 15 * vPerp.y // norm vPerp
+            { x = flipMult * toFloat vPerp.x / norm vPerp |> round
+            , y = flipMult * toFloat vPerp.y / norm vPerp |> round
             }
 
+        middleScale =
+            toFloat puzzle.pixelsPerCell * 0.27 |> round
+
+        scaleV h vect =
+            { x = toFloat vect.x * h |> round
+            , y = toFloat vect.y * h |> round
+            }
+
+        scale h n =
+            toFloat n * h |> round
+
         middle =
-            { x = vPerpN.x + (start.x + end.x) // 2
-            , y = vPerpN.y + (start.y + end.y) // 2
+            { x = (vPerpN.x * middleScale) + scale 0.5 (start.x + end.x)
+            , y = (vPerpN.y * middleScale) + scale 0.5 (start.y + end.y)
             }
     in
     { start = Point start.x start.y
-    , startControl = Point start.x start.y
-    , middleControl = Point middle.x middle.y
+    , startControl = Point (start.x + scale 0.8 vEdge.x) (start.y + scale 0.8 vEdge.y)
+    , middleControl = Point (middle.x - scale 0.4 vEdge.x) (middle.y - scale 0.4 vEdge.y)
     , middle = Point middle.x middle.y
-    , endControl = Point end.x end.y
+    , endControl = Point (end.x - scale 0.8 vEdge.x) (end.y - scale 0.8 vEdge.y)
     , end = Point end.x end.y
     }
 
@@ -185,8 +208,13 @@ main =
             calcEdges grid
                 |> List.filter (not << isOnBorder)
 
+        ( flips, _ ) =
+            Random.uniform True [ True, False ]
+                |> Random.list (List.length edges)
+                |> (\l -> Random.step l puzzle.seed)
+
         tongues =
-            List.map makeTongue edges
+            List.map2 makeTongue flips edges
 
         border =
             Svg.rect
@@ -201,13 +229,10 @@ main =
     in
     cnvs <|
         if puzzle.draftMode then
-            [ Svg.g [] markers
+            [ Svg.g [] []
 
-            -- , edge
-            --     { start = { x = 0, y = 0 }
-            --     , end = { x = 100, y = 100 }
-            --     }
-            , Svg.g [] <| List.map drawEdge edges
+            -- , Svg.g [] markers
+            -- , Svg.g [] <| List.map drawEdge edges
             , Svg.g [] <| List.map drawCurve3 tongues
             , border
             ]
@@ -300,19 +325,20 @@ calcEdges grid =
             Dict.get indices grid
                 |> Maybe.map (\point2 -> { start = point, end = point2 })
 
-        -- maybeConnect2 ( ix, iy ) point =
-        --     maybeConnect ( ix + 1, iy ) point
-        -- , maybeConnect ( ix, iy + 1 ) point
         horizontals =
             grid
-                |> Dict.map (\( ix, iy ) -> maybeConnect ( ix + 1, iy ))
-                |> Dict.values
+                |> Dict.map (\( ix, iy ) point -> maybeConnect ( ix + 1, iy ) point)
+                |> Dict.toList
+                |> List.sortBy (\( ( _, iy ), _ ) -> iy)
+                |> List.map Tuple.second
                 |> List.filterMap identity
 
         verticals =
             grid
-                |> Dict.map (\( ix, iy ) -> maybeConnect ( ix, iy + 1 ))
-                |> Dict.values
+                |> Dict.map (\( ix, iy ) point -> maybeConnect ( ix, iy + 1 ) point)
+                |> Dict.toList
+                |> List.sortBy (\( ( ix, _ ), _ ) -> ix)
+                |> List.map Tuple.second
                 |> List.filterMap identity
     in
     horizontals ++ verticals
