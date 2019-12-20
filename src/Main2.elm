@@ -14,7 +14,7 @@ puzzle =
     , gridPerturb = 4
     , seed = Random.initialSeed 1
     , draftMode = True
-    , pixelsPerCell = 40
+    , pixelsPerCell = 50
     }
 
 
@@ -50,8 +50,16 @@ main =
             Dict.values grid
                 |> List.map marker
 
+        isOnBorder edge =
+            False
+                || (edge.start.x == 0 && edge.end.x == 0)
+                || (edge.start.y == 0 && edge.end.y == 0)
+                || (edge.start.x == params.width && edge.end.x == params.width)
+                || (edge.start.y == params.height && edge.end.y == params.height)
+
         edges =
             calcEdges grid
+                |> List.filter (not << isOnBorder)
 
         border =
             Svg.rect
@@ -72,7 +80,8 @@ main =
             --     { start = { x = 0, y = 0 }
             --     , end = { x = 100, y = 100 }
             --     }
-            , Svg.g [] <| List.map edge edges
+            , Svg.g [] <| List.map drawEdge edges
+            , border
             ]
             -- [ g [] tongues
             -- , g [] (drawingShort "red")
@@ -163,16 +172,22 @@ calcEdges grid =
             Dict.get indices grid
                 |> Maybe.map (\point2 -> { start = point, end = point2 })
 
-        maybeConnect2 ( ix, iy ) point =
-            [ maybeConnect ( ix + 1, iy ) point
-            , maybeConnect ( ix, iy + 1 ) point
-            ]
+        -- maybeConnect2 ( ix, iy ) point =
+        --     maybeConnect ( ix + 1, iy ) point
+        -- , maybeConnect ( ix, iy + 1 ) point
+        horizontals =
+            grid
+                |> Dict.map (\( ix, iy ) -> maybeConnect ( ix + 1, iy ))
+                |> Dict.values
+                |> List.filterMap identity
+
+        verticals =
+            grid
+                |> Dict.map (\( ix, iy ) -> maybeConnect ( ix, iy + 1 ))
+                |> Dict.values
+                |> List.filterMap identity
     in
-    grid
-        |> Dict.map maybeConnect2
-        |> Dict.values
-        |> List.concatMap identity
-        |> List.filterMap identity
+    horizontals ++ verticals
 
 
 
@@ -191,15 +206,15 @@ marker { x, y } =
         []
 
 
-edge : Edge -> Svg msg
-edge { start, end } =
+drawEdge : Edge -> Svg msg
+drawEdge { start, end } =
     Svg.line
         [ x1 <| String.fromInt start.x
         , y1 <| String.fromInt start.y
         , x2 <| String.fromInt end.x
         , y2 <| String.fromInt end.y
         , strokeWidth "1"
-        , stroke "#666"
+        , stroke "#c66"
         ]
         []
 
