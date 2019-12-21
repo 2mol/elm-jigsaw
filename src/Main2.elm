@@ -8,10 +8,10 @@ import Svg.Attributes exposing (..)
 
 
 puzzle =
-    { piecesX = 18
-    , piecesY = 13
-    , gridPerturb = 4
-    , seed = Random.initialSeed 2
+    { piecesX = 12
+    , piecesY = 6
+    , gridPerturb = 6
+    , seed = Random.initialSeed 666
     , draftMode = False
     , pixelsPerCell = 50
     }
@@ -311,7 +311,7 @@ makeTongue flip { start, end } =
             }
 
         middleScale =
-            toFloat puzzle.pixelsPerCell * 0.27 |> round
+            toFloat puzzle.pixelsPerCell * 0.18 |> round
 
         scaleV h vect =
             { x = toFloat vect.x * h |> round
