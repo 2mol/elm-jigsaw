@@ -25,7 +25,7 @@ puzzle =
     , piecesY = 13
     , gridPerturb = 3
     , seed = Random.initialSeed 768
-    , draftMode = False
+    , draftMode = True
     }
 
 
@@ -64,7 +64,6 @@ main =
                         (Point2d.unitless 0 0)
                         (Point2d.unitless params.width params.height)
                     )
-                |> List.map Tuple.second
 
         lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
         lineCoord lineSegment =
@@ -75,7 +74,8 @@ main =
                 |> (\{ x, y } -> ( round x, round y ))
 
         edges =
-            List.concatMap Polygon2d.edges polygons
+            List.map Tuple.second polygons
+                |> List.concatMap Polygon2d.edges
                 |> List.uniqueBy lineCoord
 
         edgesLong =
@@ -97,8 +97,6 @@ main =
         edgesLongInner =
             List.filter (not << isOnBorder) edgesLong
 
-        -- wigglyDrawing =
-        --     drawWiggly baseWiggly
         ( flips, _ ) =
             Random.uniform True [ True, False ]
                 |> Random.list (List.length edgesLongInner)
@@ -125,8 +123,8 @@ main =
         if puzzle.draftMode then
             [ g [] tongues
             , g [] (drawingShort "red")
-            , g [] markers
             , g [] drawingLong
+            , g [] markers
             ]
 
         else
