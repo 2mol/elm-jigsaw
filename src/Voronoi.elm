@@ -57,7 +57,7 @@ update _ model =
 view : Model -> Document Msg
 view model =
   { title = "puzzleface"
-  , body = [text (String.fromInt model.numberPieces)]
+  , body = [draw]
   }
 
 
