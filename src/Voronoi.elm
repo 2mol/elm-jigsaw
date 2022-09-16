@@ -3,14 +3,15 @@ module Voronoi exposing (main)
 import Array
 import BoundingBox2d
 import Geometry.Svg
-import Browser
+import Browser exposing (Document)
 import List.Extra as List
 import Point2d
 import Random
 import Result
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
+import Svg exposing (Svg)
+import Svg.Attributes as SvgA
 import VoronoiDiagram2d
+import Html exposing (Html, text)
 
 
 
@@ -22,20 +23,53 @@ import VoronoiDiagram2d
 --     , draftMode = True
 --     }
 
--- main = Browser.element
--- --   { init : flags -> (model, Cmd msg)
--- --   , view : model -> Html msg
--- --   , update : msg -> model -> ( model, Cmd msg )
--- --   , subscriptions : model -> Sub msg
--- --   }
---   { init = init
---   , view = view
---   , update = update
---   , subscriptions = subscriptions
---   }
+-- MAIN
 
-
+main : Program () Model Msg
 main =
+  Browser.document
+    { init = init
+    , view = view
+    , update = update
+    , subscriptions = subscriptions
+    }
+-- MODEL
+
+type alias Model = { numberPieces : Int }
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+  ( { numberPieces = 42 }
+  , Cmd.none
+  )
+
+-- UPDATE
+
+type Msg = NoOp
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update _ model =
+  ( model, Cmd.none )
+
+
+-- VIEW
+
+view : Model -> Document Msg
+view model =
+  { title = "puzzleface"
+  , body = [text (String.fromInt model.numberPieces)]
+  }
+
+
+
+-- SUBSCRIPTIONS
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+  Sub.none
+
+-- THE REST OF THE FUCKING OWL
+draw =
     let
         cnvs =
             canvas 800 600
@@ -93,12 +127,12 @@ main =
 
         svgPolygons =
             List.map
-                (\( _, p ) -> Geometry.Svg.polygon2d [ stroke "#555555", fillOpacity "0" ] p)
+                (\( _, p ) -> Geometry.Svg.polygon2d [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ] p)
                 polygons
     in
     cnvs
-        [ g [] markers
-        , g [] svgPolygons
+        [ Svg.g [] markers
+        , Svg.g [] svgPolygons
         ]
 
 
@@ -108,12 +142,12 @@ main =
 
 marker : ( Int, Int ) -> Svg msg
 marker ( xc, yc ) =
-    circle
-        [ cx <| String.fromInt xc
-        , cy <| String.fromInt yc
-        , r "2"
-        , stroke "#aaaaaa"
-        , fillOpacity "0"
+    Svg.circle
+        [ SvgA.cx <| String.fromInt xc
+        , SvgA.cy <| String.fromInt yc
+        , SvgA.r "2"
+        , SvgA.stroke "#aaaaaa"
+        , SvgA.fillOpacity "0"
         ]
         []
 
@@ -146,25 +180,25 @@ canvas w h children =
                 (List.range 0 <| ynumtiles - 1)
 
         border =
-            rect
-                [ x "0"
-                , y "0"
-                , width wStr
-                , height hStr
-                , stroke "red"
-                , strokeWidth "2"
-                , fillOpacity "0"
+            Svg.rect
+                [ SvgA.x "0"
+                , SvgA.y "0"
+                , SvgA.width wStr
+                , SvgA.height hStr
+                , SvgA.stroke "red"
+                , SvgA.strokeWidth "2"
+                , SvgA.fillOpacity "0"
                 ]
                 []
     in
-    svg
-        [ width wStr
-        , height hStr
-        , viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
+    Svg.svg
+        [ SvgA.width wStr
+        , SvgA.height hStr
+        , SvgA.viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
         ]
-        [ g [] tiles
+        [ Svg.g [] tiles
         , border
-        , g [] children
+        , Svg.g [] children
         ]
 
 
@@ -178,11 +212,11 @@ tile size xc yc =
             else
                 "#ffffff"
     in
-    rect
-        [ x (String.fromInt (xc * size))
-        , y (String.fromInt (yc * size))
-        , width (String.fromInt size)
-        , height (String.fromInt size)
-        , fill col
+    Svg.rect
+        [ SvgA.x (String.fromInt (xc * size))
+        , SvgA.y (String.fromInt (yc * size))
+        , SvgA.width (String.fromInt size)
+        , SvgA.height (String.fromInt size)
+        , SvgA.fill col
         ]
         []
