@@ -3,6 +3,7 @@ module Voronoi exposing (main)
 import Array
 import BoundingBox2d
 import Geometry.Svg
+import Browser
 import List.Extra as List
 import Point2d
 import Random
@@ -20,6 +21,18 @@ import VoronoiDiagram2d
 --     , seed = Random.initialSeed 768
 --     , draftMode = True
 --     }
+
+-- main = Browser.element
+-- --   { init : flags -> (model, Cmd msg)
+-- --   , view : model -> Html msg
+-- --   , update : msg -> model -> ( model, Cmd msg )
+-- --   , subscriptions : model -> Sub msg
+-- --   }
+--   { init = init
+--   , view = view
+--   , update = update
+--   , subscriptions = subscriptions
+--   }
 
 
 main =
