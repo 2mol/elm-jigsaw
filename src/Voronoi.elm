@@ -6,6 +6,8 @@ import Browser exposing (Document)
 import Browser.Events exposing (onMouseMove)
 import Geometry.Svg
 import Html exposing (Html)
+import Html.Attributes as HtmlA
+import Html.Events as HtmlE
 import Json.Decode as Decode
 import List.Extra as List
 import Point2d
@@ -17,13 +19,6 @@ import VoronoiDiagram2d
 
 
 
--- puzzle =
---     { piecesX = 18
---     , piecesY = 13
---     , gridPerturb = 3
---     , seed = Random.initialSeed 768
---     , draftMode = True
---     }
 -- MAIN
 
 
@@ -43,6 +38,9 @@ main =
 
 type alias Model =
     { debugMessage : String
+
+    -- ephemereal UI state
+    -- Puzzle state
     , numberPieces : Int
     }
 
@@ -51,6 +49,14 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { debugMessage = "empty"
       , numberPieces = 42
+
+      --   , puzzle =
+      --         { piecesX = 18
+      --         , piecesY = 13
+      --         , gridPerturb = 3
+      --         , seed = Random.initialSeed 768
+      --         , draftMode = True
+      --         }
       }
     , Cmd.none
     )
@@ -60,31 +66,37 @@ init _ =
 -- UPDATE
 
 
-type alias MouseCoord =
-    { x : Int, y : Int }
-
-
 type Msg
     = NoOp
-    | MouseMove MouseCoord
+    | DragStart
+    | DragMove Int Int
+    | DragStop Float
+    | ClickedMarker
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
-        MouseMove { x, y } ->
+        -- DragMove x y ->
+        --     ( { model
+        --         | debugMessage =
+        --             "You moved the mouse to page coordinates "
+        --                 ++ String.fromInt x
+        --                 ++ ", "
+        --                 ++ String.fromInt y
+        --       }
+        --     , Cmd.none
+        --     )
+        ClickedMarker ->
             ( { model
                 | debugMessage =
-                    "You moved the mouse to page coordinates "
-                        ++ String.fromInt x
-                        ++ ", "
-                        ++ String.fromInt y
+                    "clickeeeey"
               }
             , Cmd.none
             )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 
@@ -109,11 +121,10 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     onMouseMove
-        (Decode.map2 MouseCoord
+        (Decode.map2 DragMove
             (Decode.field "pageX" Decode.int)
             (Decode.field "pageY" Decode.int)
         )
-        |> Sub.map MouseMove
 
 
 
@@ -129,8 +140,6 @@ draw =
             100
 
         pointCoordsx =
-            -- List.range 0 19
-            --     |> List.map (\n -> n * 40 + 20)
             Random.list nPoints (Random.int 0 800)
                 |> (\l -> Random.step l (Random.initialSeed 2))
                 |> Tuple.first
@@ -142,22 +151,7 @@ draw =
                 |> Tuple.first
                 |> List.map toFloat
 
-        -- pointCoordsPure =
-        --     List.lift2 Tuple.pair pointCoordsx pointCoordsy
-        -- ( randomCoordList, _ ) =
-        --     Random.pair (Random.int -5 5) (Random.int -5 5)
-        --         |> Random.list (List.length pointCoordsPure)
-        --         |> (\l -> Random.step l (Random.initialSeed 3))
-        -- pointCoords =
-        --     -- List.map2 (\( cx, cy ) ( p1, p2 ) -> ( cx + p1, cy + p2 ))
-        --     --     pointCoordsPure
-        --     --     randomCoordList
-        --     pointCoordsPure
         points =
-            -- pointCoords
-            --     |> List.map (\( xc, yc ) -> ( toFloat xc, toFloat yc ))
-            --     |> List.map (\( xc, yc ) -> Point2d.unitless xc yc)
-            --     |> Array.fromList
             List.map2 Point2d.unitless pointCoordsx pointCoordsy
                 |> Array.fromList
 
@@ -182,8 +176,8 @@ draw =
                 polygons
     in
     cnvs
-        [ Svg.g [] markers
-        , Svg.g [] svgPolygons
+        [ Svg.g [] svgPolygons
+        , Svg.g [] markers
         ]
 
 
@@ -191,14 +185,17 @@ draw =
 -- SVG HELPERS
 
 
-marker : ( Int, Int ) -> Svg msg
+marker : ( Int, Int ) -> Svg Msg
 marker ( xc, yc ) =
     Svg.circle
         [ SvgA.cx <| String.fromInt xc
         , SvgA.cy <| String.fromInt yc
-        , SvgA.r "2"
-        , SvgA.stroke "#aaaaaa"
-        , SvgA.fillOpacity "0"
+        , SvgA.r "3"
+        , SvgA.class "marker"
+        , SvgA.fill "white"
+        , SvgA.stroke "black"
+        , SvgA.strokeWidth "1"
+        , HtmlE.onClick ClickedMarker
         ]
         []
 
@@ -236,7 +233,7 @@ canvas w h children =
                 , SvgA.y "0"
                 , SvgA.width wStr
                 , SvgA.height hStr
-                , SvgA.stroke "red"
+                , SvgA.stroke "black"
                 , SvgA.strokeWidth "2"
                 , SvgA.fillOpacity "0"
                 ]
