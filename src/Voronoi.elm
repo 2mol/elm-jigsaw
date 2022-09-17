@@ -2,8 +2,9 @@ module Voronoi exposing (main)
 
 import Array
 import BoundingBox2d
-import Geometry.Svg
 import Browser exposing (Document)
+import Geometry.Svg
+import Html exposing (Html, text)
 import List.Extra as List
 import Point2d
 import Random
@@ -11,7 +12,6 @@ import Result
 import Svg exposing (Svg)
 import Svg.Attributes as SvgA
 import VoronoiDiagram2d
-import Html exposing (Html, text)
 
 
 
@@ -22,53 +22,71 @@ import Html exposing (Html, text)
 --     , seed = Random.initialSeed 768
 --     , draftMode = True
 --     }
-
 -- MAIN
+
 
 main : Program () Model Msg
 main =
-  Browser.document
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
+    Browser.document
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
+
+
+
 -- MODEL
 
-type alias Model = { numberPieces : Int }
+
+type alias Model =
+    { numberPieces : Int }
+
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-  ( { numberPieces = 42 }
-  , Cmd.none
-  )
+    ( { numberPieces = 42 }
+    , Cmd.none
+    )
+
+
 
 -- UPDATE
 
-type Msg = NoOp
+
+type Msg
+    = NoOp
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update _ model =
-  ( model, Cmd.none )
+    ( model, Cmd.none )
+
 
 
 -- VIEW
 
+
 view : Model -> Document Msg
 view model =
-  { title = "puzzleface"
-  , body = [draw]
-  }
+    { title = "puzzleface"
+    , body = [ draw ]
+    }
 
 
 
 -- SUBSCRIPTIONS
 
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-  Sub.none
+    Sub.none
+
+
 
 -- THE REST OF THE FUCKING OWL
+
+
 draw =
     let
         cnvs =
