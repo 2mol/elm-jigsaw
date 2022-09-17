@@ -3,8 +3,10 @@ module Voronoi exposing (main)
 import Array
 import BoundingBox2d
 import Browser exposing (Document)
+import Browser.Events exposing (onMouseMove)
 import Geometry.Svg
-import Html exposing (Html, text)
+import Html exposing (Html)
+import Json.Decode as Decode
 import List.Extra as List
 import Point2d
 import Random
@@ -40,12 +42,16 @@ main =
 
 
 type alias Model =
-    { numberPieces : Int }
+    { debugMessage : String
+    , numberPieces : Int
+    }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { numberPieces = 42 }
+    ( { debugMessage = "empty"
+      , numberPieces = 42
+      }
     , Cmd.none
     )
 
@@ -54,13 +60,31 @@ init _ =
 -- UPDATE
 
 
+type alias MouseCoord =
+    { x : Int, y : Int }
+
+
 type Msg
     = NoOp
+    | MouseMove MouseCoord
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update _ model =
-    ( model, Cmd.none )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        MouseMove { x, y } ->
+            ( { model
+                | debugMessage =
+                    "You moved the mouse to page coordinates "
+                        ++ String.fromInt x
+                        ++ ", "
+                        ++ String.fromInt y
+              }
+            , Cmd.none
+            )
 
 
 
@@ -70,7 +94,11 @@ update _ model =
 view : Model -> Document Msg
 view model =
     { title = "puzzleface"
-    , body = [ draw ]
+    , body =
+        [ Html.text model.debugMessage
+        , Html.br [] []
+        , draw
+        ]
     }
 
 
@@ -79,8 +107,13 @@ view model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+subscriptions model =
+    onMouseMove
+        (Decode.map2 MouseCoord
+            (Decode.field "pageX" Decode.int)
+            (Decode.field "pageY" Decode.int)
+        )
+        |> Sub.map MouseMove
 
 
 
