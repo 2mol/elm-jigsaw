@@ -9,8 +9,11 @@ import Html exposing (Html)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as Decode exposing (Decoder)
+import LineSegment2d exposing (LineSegment2d)
 import List.Extra as List
 import Point2d
+import Polygon2d
+import Quantity exposing (Unitless)
 import Random
 import Result
 import Svg exposing (Svg)
@@ -124,17 +127,11 @@ update msg model =
                                 -- Saving the first offset x,y coordinates so that we can take the relative diff
                                 DraggingMarker idx (Maybe.map (\( px, py ) -> ( toFloat x - px, toFloat y - py )) (Array.get idx model.voronoiPoints))
 
-                            -- (Just ( toFloat x, toFloat y ))
                             _ ->
                                 model.dragState
                 in
                 { model
-                    | debugMessage =
-                        "You moved the mouse to page coordinates "
-                            ++ String.fromInt x
-                            ++ ", "
-                            ++ String.fromInt y
-                    , dragState = dragState
+                    | dragState = dragState
                     , voronoiPoints =
                         case dragState of
                             DraggingMarker _ (Just ( offsetX, offsetY )) ->
@@ -188,8 +185,7 @@ view : Model -> Document Msg
 view model =
     { title = "puzzleface"
     , body =
-        [ Html.text model.debugMessage
-        , Html.br [] []
+        [ Html.text ""
         , draw model
         ]
     }
@@ -220,15 +216,39 @@ draw model =
                 (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 800 600))
                 voronoi
 
-        svgPolygons =
+        -- svgPolygons =
+        --     List.map
+        --         (\( _, p ) -> Geometry.Svg.polygon2d [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ] p)
+        --         polygons
+        -- lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
+        lineCoord lineSegment =
+            -- a little "trick" to compare edges for equality
+            -- independent of orientation: just compare their midpoint
+            LineSegment2d.midpoint lineSegment
+                |> Point2d.toUnitless
+                |> (\{ x, y } -> ( round x, round y ))
+
+        edges =
+            List.map Tuple.second polygons
+                |> List.concatMap Polygon2d.edges
+                |> List.uniqueBy lineCoord
+
+        edgeAttrs =
+            if True then
+                [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ]
+
+            else
+                [ SvgA.stroke "#999", SvgA.strokeDasharray "2", SvgA.fillOpacity "0" ]
+
+        svgEdges =
             List.map
-                (\( _, p ) -> Geometry.Svg.polygon2d [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ] p)
-                polygons
+                (Geometry.Svg.lineSegment2d edgeAttrs)
+                edges
     in
     canvas
         800
         600
-        [ Svg.g [] svgPolygons
+        [ Svg.g [] svgEdges
         , Svg.g [] markers
         ]
 
