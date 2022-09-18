@@ -8,7 +8,7 @@ import Geometry.Svg
 import Html exposing (Html)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder)
 import List.Extra as List
 import Point2d
 import Random
@@ -99,7 +99,7 @@ type Msg
     = NoOp
     | Init (Array ( Float, Float ))
     | DragStart
-    | DragMoving Int Int
+    | DragMoving Bool Int Int
     | DragStop
 
 
@@ -115,13 +115,19 @@ update msg model =
         DragStop ->
             ( { model | dragState = DraggingNothing }, Cmd.none )
 
-        DragMoving x y ->
+        DragMoving isDown x y ->
             ( { model
                 | debugMessage =
                     "You moved the mouse to page coordinates "
                         ++ String.fromInt x
                         ++ ", "
                         ++ String.fromInt y
+                , dragState =
+                    if isDown then
+                        model.dragState
+
+                    else
+                        DraggingNothing
               }
             , Cmd.none
             )
@@ -147,12 +153,18 @@ subscriptions model =
             in
             Sub.batch
                 [ E.onMouseMove
-                    (Decode.map2 DragMoving
+                    (Decode.map3 DragMoving
+                        decodeButtonZombieDrag
                         (Decode.field "pageX" Decode.int)
                         (Decode.field "pageY" Decode.int)
                     )
                 , E.onMouseUp (Decode.succeed DragStop)
                 ]
+
+
+decodeButtonZombieDrag : Decoder Bool
+decodeButtonZombieDrag =
+    Decode.field "buttons" (Decode.map (\buttons -> buttons == 1) Decode.int)
 
 
 
