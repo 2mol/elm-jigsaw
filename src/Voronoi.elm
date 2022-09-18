@@ -72,26 +72,25 @@ init _ =
       --         , draftMode = True
       --         }
       }
-    , Random.generate Init genXYCoordinates
+    , Random.generate Init (genXYCoordinates 150)
     )
 
 
-genXCoordinates : Random.Generator (List Float)
-genXCoordinates =
-    Random.list 100 (Random.int 0 800)
+genXCoordinates : Int -> Random.Generator (List Float)
+genXCoordinates n =
+    Random.list n (Random.int 0 800)
         |> (Random.map << List.map) toFloat
 
 
-genYCoordinates : Random.Generator (List Float)
-genYCoordinates =
-    Random.list 100 (Random.int 0 600)
+genYCoordinates : Int -> Random.Generator (List Float)
+genYCoordinates n =
+    Random.list n (Random.int 0 600)
         |> (Random.map << List.map) toFloat
 
 
-genXYCoordinates : Random.Generator (Array ( Float, Float ))
-genXYCoordinates =
-    Random.map2 List.zip genXCoordinates genYCoordinates
-        |> Random.map Array.fromList
+genXYCoordinates : Int -> Random.Generator (List ( Float, Float ))
+genXYCoordinates n =
+    Random.map2 List.zip (genXCoordinates n) (genYCoordinates n)
 
 
 
@@ -100,7 +99,7 @@ genXYCoordinates =
 
 type Msg
     = NoOp
-    | Init (Array ( Float, Float ))
+    | Init (List ( Float, Float ))
     | DragStart Int
     | DragMoving Int Bool Int Int
     | DragStop
@@ -110,7 +109,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Init coord ->
-            ( { model | voronoiPoints = coord }, Cmd.none )
+            ( { model | voronoiPoints = List.unique coord |> Array.fromList }, Cmd.none )
 
         DragStart idx ->
             ( { model | dragState = DraggingMarker idx Nothing }, Cmd.none )
@@ -235,7 +234,7 @@ draw model =
 
         edgeAttrs =
             if True then
-                [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ]
+                [ SvgA.stroke "#555555", SvgA.strokeWidth "1.5", SvgA.fillOpacity "0" ]
 
             else
                 [ SvgA.stroke "#999", SvgA.strokeDasharray "2", SvgA.fillOpacity "0" ]
