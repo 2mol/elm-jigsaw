@@ -38,8 +38,8 @@ main =
 
 
 type DragState
-    = DragNothing
-    | DragMarker
+    = DraggingNothing
+    | DraggingMarker
 
 
 type alias Model =
@@ -57,7 +57,7 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { debugMessage = "empty"
-      , dragState = DragNothing
+      , dragState = DraggingNothing
       , numberPieces = 100
       , voronoiPoints = Array.empty
 
@@ -101,20 +101,19 @@ type Msg
     | DragStart
     | DragMoving Int Int
     | DragStop
-    | ClickedMarker
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
         Init coord ->
             ( { model | voronoiPoints = coord }, Cmd.none )
 
         DragStart ->
-            ( { model | dragState = DragMarker }, Cmd.none )
+            ( { model | dragState = DraggingMarker }, Cmd.none )
+
+        DragStop ->
+            ( { model | dragState = DraggingNothing }, Cmd.none )
 
         DragMoving x y ->
             ( { model
@@ -123,14 +122,6 @@ update msg model =
                         ++ String.fromInt x
                         ++ ", "
                         ++ String.fromInt y
-              }
-            , Cmd.none
-            )
-
-        ClickedMarker ->
-            ( { model
-                | debugMessage =
-                    "clickeeeey"
               }
             , Cmd.none
             )
@@ -146,10 +137,10 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.dragState of
-        DragNothing ->
+        DraggingNothing ->
             Sub.none
 
-        DragMarker ->
+        DraggingMarker ->
             let
                 _ =
                     Debug.log "test" 123
@@ -160,8 +151,7 @@ subscriptions model =
                         (Decode.field "pageX" Decode.int)
                         (Decode.field "pageY" Decode.int)
                     )
-
-                -- , E.onMouseUp (Decode.map DragStop)
+                , E.onMouseUp (Decode.succeed DragStop)
                 ]
 
 
@@ -232,8 +222,6 @@ marker ( xc, yc ) =
         , SvgA.fill "white"
         , SvgA.stroke "black"
         , SvgA.strokeWidth "1"
-
-        -- , HtmlE.onClick ClickedMarker
         , SvgE.on "mousedown" (Decode.succeed DragStart)
         ]
         []
