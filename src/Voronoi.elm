@@ -39,7 +39,7 @@ main =
 
 type DragState
     = DraggingNothing
-    | DraggingMarker
+    | DraggingMarker Int (Maybe ( Float, Float ))
 
 
 type alias Model =
@@ -69,25 +69,25 @@ init _ =
       --         , draftMode = True
       --         }
       }
-    , Random.generate Init bla
+    , Random.generate Init genXYCoordinates
     )
 
 
-blax : Random.Generator (List Float)
-blax =
+genXCoordinates : Random.Generator (List Float)
+genXCoordinates =
     Random.list 100 (Random.int 0 800)
         |> (Random.map << List.map) toFloat
 
 
-blay : Random.Generator (List Float)
-blay =
+genYCoordinates : Random.Generator (List Float)
+genYCoordinates =
     Random.list 100 (Random.int 0 600)
         |> (Random.map << List.map) toFloat
 
 
-bla : Random.Generator (Array ( Float, Float ))
-bla =
-    Random.map2 List.zip blax blay
+genXYCoordinates : Random.Generator (Array ( Float, Float ))
+genXYCoordinates =
+    Random.map2 List.zip genXCoordinates genYCoordinates
         |> Random.map Array.fromList
 
 
@@ -98,8 +98,8 @@ bla =
 type Msg
     = NoOp
     | Init (Array ( Float, Float ))
-    | DragStart
-    | DragMoving Bool Int Int
+    | DragStart Int
+    | DragMoving Int Bool Int Int
     | DragStop
 
 
@@ -109,26 +109,43 @@ update msg model =
         Init coord ->
             ( { model | voronoiPoints = coord }, Cmd.none )
 
-        DragStart ->
-            ( { model | dragState = DraggingMarker }, Cmd.none )
+        DragStart idx ->
+            ( { model | dragState = DraggingMarker idx Nothing }, Cmd.none )
 
         DragStop ->
             ( { model | dragState = DraggingNothing }, Cmd.none )
 
-        DragMoving isDown x y ->
-            ( { model
-                | debugMessage =
-                    "You moved the mouse to page coordinates "
-                        ++ String.fromInt x
-                        ++ ", "
-                        ++ String.fromInt y
-                , dragState =
-                    if isDown then
-                        model.dragState
+        DragMoving idx isDown x y ->
+            ( if isDown then
+                let
+                    dragState =
+                        case model.dragState of
+                            DraggingMarker _ Nothing ->
+                                -- Saving the first offset x,y coordinates so that we can take the relative diff
+                                DraggingMarker idx (Maybe.map (\( px, py ) -> ( toFloat x - px, toFloat y - py )) (Array.get idx model.voronoiPoints))
 
-                    else
-                        DraggingNothing
-              }
+                            -- (Just ( toFloat x, toFloat y ))
+                            _ ->
+                                model.dragState
+                in
+                { model
+                    | debugMessage =
+                        "You moved the mouse to page coordinates "
+                            ++ String.fromInt x
+                            ++ ", "
+                            ++ String.fromInt y
+                    , dragState = dragState
+                    , voronoiPoints =
+                        case dragState of
+                            DraggingMarker _ (Just ( offsetX, offsetY )) ->
+                                Array.set idx ( toFloat x - offsetX, toFloat y - offsetY ) model.voronoiPoints
+
+                            _ ->
+                                model.voronoiPoints
+                }
+
+              else
+                { model | dragState = DraggingNothing }
             , Cmd.none
             )
 
@@ -146,14 +163,10 @@ subscriptions model =
         DraggingNothing ->
             Sub.none
 
-        DraggingMarker ->
-            let
-                _ =
-                    Debug.log "test" 123
-            in
+        DraggingMarker idx _ ->
             Sub.batch
                 [ E.onMouseMove
-                    (Decode.map3 DragMoving
+                    (Decode.map3 (DragMoving idx)
                         decodeButtonZombieDrag
                         (Decode.field "pageX" Decode.int)
                         (Decode.field "pageY" Decode.int)
@@ -195,7 +208,7 @@ draw model =
         markers =
             Array.map Point2d.toUnitless points
                 |> Array.map (\p -> ( round p.x, round p.y ))
-                |> Array.map marker
+                |> Array.indexedMap marker
                 |> Array.toList
 
         voronoi =
@@ -224,8 +237,8 @@ draw model =
 -- SVG HELPERS
 
 
-marker : ( Int, Int ) -> Svg Msg
-marker ( xc, yc ) =
+marker : Int -> ( Int, Int ) -> Svg Msg
+marker idx ( xc, yc ) =
     Svg.circle
         [ SvgA.cx <| String.fromInt xc
         , SvgA.cy <| String.fromInt yc
@@ -234,7 +247,7 @@ marker ( xc, yc ) =
         , SvgA.fill "white"
         , SvgA.stroke "black"
         , SvgA.strokeWidth "1"
-        , SvgE.on "mousedown" (Decode.succeed DragStart)
+        , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
         ]
         []
 
