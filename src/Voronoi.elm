@@ -15,6 +15,7 @@ import Random
 import Result
 import Svg exposing (Svg)
 import Svg.Attributes as SvgA
+import Svg.Events as SvgE
 import VoronoiDiagram2d
 
 
@@ -231,7 +232,9 @@ marker ( xc, yc ) =
         , SvgA.fill "white"
         , SvgA.stroke "black"
         , SvgA.strokeWidth "1"
-        , HtmlE.onClick ClickedMarker
+
+        -- , HtmlE.onClick ClickedMarker
+        , SvgE.on "mousedown" (Decode.succeed DragStart)
         ]
         []
 
@@ -279,7 +282,6 @@ canvas w h children =
         [ SvgA.width wStr
         , SvgA.height hStr
         , SvgA.viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
-        , HtmlE.on "mousedown" (Decode.succeed DragStart)
         ]
         [ Svg.g [] tiles
         , border
