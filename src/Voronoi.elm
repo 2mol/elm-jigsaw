@@ -1,6 +1,6 @@
 module Voronoi exposing (main)
 
-import Array
+import Array exposing (Array)
 import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Events exposing (onMouseMove)
@@ -36,19 +36,29 @@ main =
 -- MODEL
 
 
+type DragState
+    = DragNothing
+    | DragMarker
+
+
 type alias Model =
     { debugMessage : String
 
     -- ephemereal UI state
+    , dragState : DragState
+
     -- Puzzle state
     , numberPieces : Int
+    , voronoiPoints : Array ( Float, Float )
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { debugMessage = "empty"
-      , numberPieces = 42
+      , dragState = DragNothing
+      , numberPieces = 100
+      , voronoiPoints = Array.empty
 
       --   , puzzle =
       --         { piecesX = 18
@@ -58,8 +68,26 @@ init _ =
       --         , draftMode = True
       --         }
       }
-    , Cmd.none
+    , Random.generate Init bla
     )
+
+
+blax : Random.Generator (List Float)
+blax =
+    Random.list 100 (Random.int 0 800)
+        |> (Random.map << List.map) toFloat
+
+
+blay : Random.Generator (List Float)
+blay =
+    Random.list 100 (Random.int 0 600)
+        |> (Random.map << List.map) toFloat
+
+
+bla : Random.Generator (Array ( Float, Float ))
+bla =
+    Random.map2 List.zip blax blay
+        |> Random.map Array.fromList
 
 
 
@@ -68,6 +96,7 @@ init _ =
 
 type Msg
     = NoOp
+    | Init (Array ( Float, Float ))
     | DragStart
     | DragMove Int Int
     | DragStop Float
@@ -77,6 +106,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Init coord ->
+            ( { model | voronoiPoints = coord }, Cmd.none )
+
         -- DragMove x y ->
         --     ( { model
         --         | debugMessage =
@@ -100,21 +132,6 @@ update msg model =
 
 
 
--- VIEW
-
-
-view : Model -> Document Msg
-view model =
-    { title = "puzzleface"
-    , body =
-        [ Html.text model.debugMessage
-        , Html.br [] []
-        , draw
-        ]
-    }
-
-
-
 -- SUBSCRIPTIONS
 
 
@@ -128,32 +145,32 @@ subscriptions model =
 
 
 
+-- VIEW
+
+
+view : Model -> Document Msg
+view model =
+    { title = "puzzleface"
+    , body =
+        [ Html.text model.debugMessage
+        , Html.br [] []
+        , draw model
+        ]
+    }
+
+
+
 -- THE REST OF THE FUCKING OWL
 
 
-draw =
+draw : Model -> Svg Msg
+draw model =
     let
         cnvs =
             canvas 800 600
 
-        nPoints =
-            100
-
-        pointCoordsx =
-            Random.list nPoints (Random.int 0 800)
-                |> (\l -> Random.step l (Random.initialSeed 2))
-                |> Tuple.first
-                |> List.map toFloat
-
-        pointCoordsy =
-            Random.list nPoints (Random.int 0 600)
-                |> (\l -> Random.step l (Random.initialSeed 2))
-                |> Tuple.first
-                |> List.map toFloat
-
         points =
-            List.map2 Point2d.unitless pointCoordsx pointCoordsy
-                |> Array.fromList
+            Array.map (\( x, y ) -> Point2d.unitless x y) model.voronoiPoints
 
         markers =
             Array.map Point2d.toUnitless points
