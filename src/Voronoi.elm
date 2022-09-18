@@ -3,7 +3,7 @@ module Voronoi exposing (main)
 import Array exposing (Array)
 import BoundingBox2d
 import Browser exposing (Document)
-import Browser.Events exposing (onMouseMove)
+import Browser.Events as E
 import Geometry.Svg
 import Html exposing (Html)
 import Html.Attributes as HtmlA
@@ -98,27 +98,34 @@ type Msg
     = NoOp
     | Init (Array ( Float, Float ))
     | DragStart
-    | DragMove Int Int
-    | DragStop Float
+    | DragMoving Int Int
+    | DragStop
     | ClickedMarker
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         Init coord ->
             ( { model | voronoiPoints = coord }, Cmd.none )
 
-        -- DragMove x y ->
-        --     ( { model
-        --         | debugMessage =
-        --             "You moved the mouse to page coordinates "
-        --                 ++ String.fromInt x
-        --                 ++ ", "
-        --                 ++ String.fromInt y
-        --       }
-        --     , Cmd.none
-        --     )
+        DragStart ->
+            ( { model | dragState = DragMarker }, Cmd.none )
+
+        DragMoving x y ->
+            ( { model
+                | debugMessage =
+                    "You moved the mouse to page coordinates "
+                        ++ String.fromInt x
+                        ++ ", "
+                        ++ String.fromInt y
+              }
+            , Cmd.none
+            )
+
         ClickedMarker ->
             ( { model
                 | debugMessage =
@@ -137,11 +144,24 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    onMouseMove
-        (Decode.map2 DragMove
-            (Decode.field "pageX" Decode.int)
-            (Decode.field "pageY" Decode.int)
-        )
+    case model.dragState of
+        DragNothing ->
+            Sub.none
+
+        DragMarker ->
+            let
+                _ =
+                    Debug.log "test" 123
+            in
+            Sub.batch
+                [ E.onMouseMove
+                    (Decode.map2 DragMoving
+                        (Decode.field "pageX" Decode.int)
+                        (Decode.field "pageY" Decode.int)
+                    )
+
+                -- , E.onMouseUp (Decode.map DragStop)
+                ]
 
 
 
@@ -163,12 +183,9 @@ view model =
 -- THE REST OF THE FUCKING OWL
 
 
-draw : Model -> Svg Msg
+draw : Model -> Html Msg
 draw model =
     let
-        cnvs =
-            canvas 800 600
-
         points =
             Array.map (\( x, y ) -> Point2d.unitless x y) model.voronoiPoints
 
@@ -192,7 +209,9 @@ draw model =
                 (\( _, p ) -> Geometry.Svg.polygon2d [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ] p)
                 polygons
     in
-    cnvs
+    canvas
+        800
+        600
         [ Svg.g [] svgPolygons
         , Svg.g [] markers
         ]
@@ -221,7 +240,7 @@ marker ( xc, yc ) =
 -- CANVAS HELPERS
 
 
-canvas : Int -> Int -> List (Svg msg) -> Svg msg
+canvas : Int -> Int -> List (Svg Msg) -> Html Msg
 canvas w h children =
     let
         hStr =
@@ -260,6 +279,7 @@ canvas w h children =
         [ SvgA.width wStr
         , SvgA.height hStr
         , SvgA.viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
+        , HtmlE.on "mousedown" (Decode.succeed DragStart)
         ]
         [ Svg.g [] tiles
         , border
@@ -267,7 +287,7 @@ canvas w h children =
         ]
 
 
-tile : Int -> Int -> Int -> Svg msg
+tile : Int -> Int -> Int -> Svg Msg
 tile size xc yc =
     let
         col =
