@@ -1,5 +1,6 @@
 module Voronoi exposing (main)
 
+import Angle
 import Array exposing (Array)
 import Axis2d
 import BoundingBox2d
@@ -50,6 +51,11 @@ type DragState
     | DraggingMarker Int (Maybe ( Float, Float ))
 
 
+type TongueOrientation
+    = Oneway
+    | Theotherway
+
+
 type alias Model =
     { debugMessage : String
 
@@ -59,7 +65,7 @@ type alias Model =
     -- Puzzle state
     , numberPieces : Int
     , voronoiPoints : Array ( Float, Float )
-    , edgeTongues : Dict ( Int, Int ) Bool
+    , edgeTongues : Dict ( Int, Int ) TongueOrientation
     }
 
 
@@ -156,9 +162,19 @@ updateModel msg model =
             let
                 currentState =
                     Dict.get midpointCoordinates model.edgeTongues
-                        |> Maybe.withDefault False
+
+                newEdgeTongues =
+                    case currentState of
+                        Just Oneway ->
+                            Dict.insert midpointCoordinates Theotherway model.edgeTongues
+
+                        Just Theotherway ->
+                            Dict.remove midpointCoordinates model.edgeTongues
+
+                        Nothing ->
+                            Dict.insert midpointCoordinates Oneway model.edgeTongues
             in
-            { model | edgeTongues = Dict.insert midpointCoordinates (not currentState) model.edgeTongues }
+            { model | edgeTongues = newEdgeTongues }
 
         _ ->
             model
@@ -242,13 +258,12 @@ draw model =
 
         tongues =
             edges
-                -- |> List.map2 flip flips
-                |> List.filter (shouldDrawEdge model.edgeTongues)
+                |> List.filterMap (tongueFilterMap model.edgeTongues)
                 |> List.map (fitWiggly baseWiggly)
                 |> List.map drawWiggly
 
         svgEdges =
-            List.map drawEdge edges
+            List.map (drawEdge model.edgeTongues) edges
     in
     canvas
         800
@@ -304,26 +319,47 @@ marker idx ( xc, yc ) =
         []
 
 
-drawEdge : LineSegment2d Unitless coordinates -> Svg Msg
-drawEdge edge =
+drawEdge : Dict ( Int, Int ) TongueOrientation -> LineSegment2d Unitless coordinates -> Svg Msg
+drawEdge edgeTongues edge =
+    Geometry.Svg.lineSegment2d
+        [ SvgA.stroke
+            (if Dict.member (lineCoord edge) edgeTongues then
+                "#bbb"
+
+             else
+                "#666"
+            )
+        , SvgA.strokeWidth "2.5"
+        , SvgE.onClick (ToggleEdgeTongue (lineCoord edge))
+        ]
+        edge
+
+
+tongueFilterMap : Dict ( Int, Int ) TongueOrientation -> LineSegment2d Unitless coordinates -> Maybe (LineSegment2d Unitless coordinates)
+tongueFilterMap edgeDict edge =
     let
-        edgeAttrs =
-            if True then
-                [ SvgA.stroke "#555555", SvgA.strokeWidth "1.5" ]
+        flipIf orientation =
+            case orientation of
+                Oneway ->
+                    edge
 
-            else
-                [ SvgA.stroke "#999", SvgA.strokeDasharray "2" ]
-
-        clickAttr =
-            SvgE.onClick (ToggleEdgeTongue (lineCoord edge))
+                Theotherway ->
+                    flip edge
     in
-    Geometry.Svg.lineSegment2d (clickAttr :: edgeAttrs) edge
-
-
-shouldDrawEdge : Dict ( Int, Int ) Bool -> LineSegment2d Unitless coordinates -> Bool
-shouldDrawEdge edgeDict edge =
     Dict.get (lineCoord edge) edgeDict
-        |> Maybe.withDefault False
+        |> Maybe.map flipIf
+
+
+flip : LineSegment2d Unitless coordinates -> LineSegment2d Unitless coordinates
+flip segment =
+    let
+        pivot =
+            LineSegment2d.midpoint segment
+
+        angle =
+            Angle.degrees 180
+    in
+    LineSegment2d.rotateAround pivot angle segment
 
 
 
@@ -459,6 +495,6 @@ drawWiggly : Wiggly -> Svg msg
 drawWiggly ( w1, w2 ) =
     let
         drawHalf spline =
-            Geometry.Svg.cubicSpline2d [ SvgA.stroke "crimson", SvgA.fillOpacity "0" ] spline
+            Geometry.Svg.cubicSpline2d [ SvgA.stroke "crimson", SvgA.fillOpacity "0", SvgA.strokeWidth "2.5" ] spline
     in
     Svg.g [] [ drawHalf w1, drawHalf w2 ]
