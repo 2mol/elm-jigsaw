@@ -6,6 +6,7 @@ import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Events as E
 import CubicSpline2d exposing (CubicSpline2d)
+import Dict exposing (Dict)
 import Direction2d
 import Geometry.Svg
 import Html exposing (Html)
@@ -58,6 +59,7 @@ type alias Model =
     -- Puzzle state
     , numberPieces : Int
     , voronoiPoints : Array ( Float, Float )
+    , edgeTongues : Dict ( Int, Int ) Bool
     }
 
 
@@ -67,6 +69,7 @@ init _ =
       , dragState = DraggingNothing
       , numberPieces = 100
       , voronoiPoints = Array.empty
+      , edgeTongues = Dict.empty
 
       --   , puzzle =
       --         { piecesX = 18
@@ -107,22 +110,24 @@ type Msg
     | DragStart Int
     | DragMoving Int Bool Int Int
     | DragStop
+    | ToggleEdgeTongue ( Int, Int )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+updateModel : Msg -> Model -> Model
+updateModel msg model =
     case msg of
         Init coord ->
-            ( { model | voronoiPoints = List.unique coord |> Array.fromList }, Cmd.none )
+            { model | voronoiPoints = List.unique coord |> Array.fromList }
 
         DragStart idx ->
-            ( { model | dragState = DraggingMarker idx Nothing }, Cmd.none )
+            { model | dragState = DraggingMarker idx Nothing }
 
         DragStop ->
-            ( { model | dragState = DraggingNothing }, Cmd.none )
+            -- TODO: prune dict of edge connectors here
+            { model | dragState = DraggingNothing }
 
         DragMoving idx isDown x y ->
-            ( if isDown then
+            if isDown then
                 let
                     dragState =
                         case model.dragState of
@@ -144,13 +149,24 @@ update msg model =
                                 model.voronoiPoints
                 }
 
-              else
+            else
                 { model | dragState = DraggingNothing }
-            , Cmd.none
-            )
+
+        ToggleEdgeTongue midpointCoordinates ->
+            let
+                currentState =
+                    Dict.get midpointCoordinates model.edgeTongues
+                        |> Maybe.withDefault False
+            in
+            { model | edgeTongues = Dict.insert midpointCoordinates (not currentState) model.edgeTongues }
 
         _ ->
-            ( model, Cmd.none )
+            model
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    ( updateModel msg model, Cmd.none )
 
 
 
@@ -227,20 +243,12 @@ draw model =
         tongues =
             edges
                 -- |> List.map2 flip flips
+                |> List.filter (shouldDrawEdge model.edgeTongues)
                 |> List.map (fitWiggly baseWiggly)
                 |> List.map drawWiggly
 
-        edgeAttrs =
-            if True then
-                [ SvgA.stroke "#555555", SvgA.strokeWidth "1.5", SvgA.fillOpacity "0" ]
-
-            else
-                [ SvgA.stroke "#999", SvgA.strokeDasharray "2", SvgA.fillOpacity "0" ]
-
         svgEdges =
-            List.map
-                (Geometry.Svg.lineSegment2d edgeAttrs)
-                edges
+            List.map drawEdge edges
     in
     canvas
         800
@@ -294,6 +302,28 @@ marker idx ( xc, yc ) =
         , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
         ]
         []
+
+
+drawEdge : LineSegment2d Unitless coordinates -> Svg Msg
+drawEdge edge =
+    let
+        edgeAttrs =
+            if True then
+                [ SvgA.stroke "#555555", SvgA.strokeWidth "1.5" ]
+
+            else
+                [ SvgA.stroke "#999", SvgA.strokeDasharray "2" ]
+
+        clickAttr =
+            SvgE.onClick (ToggleEdgeTongue (lineCoord edge))
+    in
+    Geometry.Svg.lineSegment2d (clickAttr :: edgeAttrs) edge
+
+
+shouldDrawEdge : Dict ( Int, Int ) Bool -> LineSegment2d Unitless coordinates -> Bool
+shouldDrawEdge edgeDict edge =
+    Dict.get (lineCoord edge) edgeDict
+        |> Maybe.withDefault False
 
 
 
