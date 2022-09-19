@@ -1,9 +1,12 @@
 module Voronoi exposing (main)
 
 import Array exposing (Array)
+import Axis2d
 import BoundingBox2d
 import Browser exposing (Document)
 import Browser.Events as E
+import CubicSpline2d exposing (CubicSpline2d)
+import Direction2d
 import Geometry.Svg
 import Html exposing (Html)
 import Html.Attributes as HtmlA
@@ -19,6 +22,7 @@ import Result
 import Svg exposing (Svg)
 import Svg.Attributes as SvgA
 import Svg.Events as SvgE
+import Vector2d
 import VoronoiDiagram2d
 
 
@@ -215,22 +219,16 @@ draw model =
                 (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 800 600))
                 voronoi
 
-        -- svgPolygons =
-        --     List.map
-        --         (\( _, p ) -> Geometry.Svg.polygon2d [ SvgA.stroke "#555555", SvgA.fillOpacity "0" ] p)
-        --         polygons
-        -- lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
-        lineCoord lineSegment =
-            -- a little "trick" to compare edges for equality
-            -- independent of orientation: just compare their midpoint
-            LineSegment2d.midpoint lineSegment
-                |> Point2d.toUnitless
-                |> (\{ x, y } -> ( round x, round y ))
-
         edges =
             List.map Tuple.second polygons
                 |> List.concatMap Polygon2d.edges
                 |> List.uniqueBy lineCoord
+
+        tongues =
+            edges
+                -- |> List.map2 flip flips
+                |> List.map (fitWiggly baseWiggly)
+                |> List.map drawWiggly
 
         edgeAttrs =
             if True then
@@ -249,7 +247,34 @@ draw model =
         600
         [ Svg.g [] svgEdges
         , Svg.g [] markers
+        , Svg.g [] tongues
+
+        -- , drawWiggly baseWiggly
+        -- , Svg.g []
+        --     (List.map2
+        --         (\x y ->
+        --             Svg.circle
+        --                 [ SvgA.cx <| String.fromInt x
+        --                 , SvgA.cy <| String.fromInt y
+        --                 , SvgA.r "1"
+        --                 , SvgA.stroke "crimson"
+        --                 , SvgA.strokeWidth "1"
+        --                 ]
+        --                 []
+        --         )
+        --         (List.map ((*) 10) (List.range 0 50))
+        --         (List.map ((*) 10) (List.range 0 50))
+        --     )
         ]
+
+
+lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
+lineCoord lineSegment =
+    -- a little "trick" to compare edges for equality
+    -- independent of orientation: just compare their midpoint
+    LineSegment2d.midpoint lineSegment
+        |> Point2d.toUnitless
+        |> (\{ x, y } -> ( round x, round y ))
 
 
 
@@ -339,3 +364,71 @@ tile size xc yc =
         , SvgA.fill col
         ]
         []
+
+
+
+-- TONGUES
+
+
+type alias Wiggly =
+    ( CubicSpline2d Unitless (), CubicSpline2d Unitless () )
+
+
+baseWiggly : Wiggly
+baseWiggly =
+    let
+        baseShape =
+            CubicSpline2d.fromControlPoints
+                -- startpoint
+                (Point2d.unitless 50 120)
+                -- control points
+                (Point2d.unitless 200 120)
+                (Point2d.unitless 60 70)
+                -- endpoint
+                (Point2d.unitless 150 70)
+
+        mirroredBaseShape =
+            CubicSpline2d.mirrorAcross Axis2d.y baseShape
+                |> CubicSpline2d.translateBy (Vector2d.unitless 300 0)
+    in
+    ( baseShape, mirroredBaseShape )
+
+
+fitWiggly : Wiggly -> LineSegment2d Unitless () -> Wiggly
+fitWiggly ( w1, w2 ) segment =
+    let
+        pivot =
+            CubicSpline2d.startPoint w1
+
+        segmentLen =
+            LineSegment2d.length segment |> Quantity.toFloat
+
+        scale spline =
+            CubicSpline2d.scaleAbout pivot (1 / 200 * segmentLen) spline
+
+        translationVector =
+            Vector2d.from pivot (LineSegment2d.startPoint segment)
+
+        rotationAngle =
+            LineSegment2d.vector segment
+                |> Vector2d.direction
+                |> Maybe.withDefault (Direction2d.radians 0)
+                |> Direction2d.toAngle
+
+        fit w =
+            scale w
+                |> CubicSpline2d.translateBy translationVector
+                |> CubicSpline2d.rotateAround (LineSegment2d.startPoint segment) rotationAngle
+    in
+    ( fit w1
+    , fit w2
+    )
+
+
+drawWiggly : Wiggly -> Svg msg
+drawWiggly ( w1, w2 ) =
+    let
+        drawHalf spline =
+            Geometry.Svg.cubicSpline2d [ SvgA.stroke "crimson", SvgA.fillOpacity "0" ] spline
+    in
+    Svg.g [] [ drawHalf w1, drawHalf w2 ]
