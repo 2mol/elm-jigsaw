@@ -310,10 +310,10 @@ marker idx ( xc, yc ) =
         [ SvgA.cx <| String.fromInt xc
         , SvgA.cy <| String.fromInt yc
         , SvgA.r "3"
-        , SvgA.class "marker"
-        , SvgA.fill "white"
+        , SvgA.fillOpacity "0"
         , SvgA.stroke "black"
-        , SvgA.strokeWidth "1"
+        , SvgA.strokeOpacity "0.75"
+        , SvgA.strokeWidth "1.5"
         , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
         ]
         []
@@ -329,7 +329,7 @@ drawEdge edgeTongues edge =
              else
                 "#666"
             )
-        , SvgA.strokeWidth "2.5"
+        , SvgA.strokeWidth "2"
         , SvgE.onClick (ToggleEdgeTongue (lineCoord edge))
         ]
         edge

@@ -6963,7 +6963,7 @@ var $author$project$Voronoi$drawEdge = F2(
 						$elm$core$Dict$member,
 						$author$project$Voronoi$lineCoord(edge),
 						edgeTongues) ? '#bbb' : '#666'),
-					$elm$svg$Svg$Attributes$strokeWidth('2.5'),
+					$elm$svg$Svg$Attributes$strokeWidth('2'),
 					$elm$svg$Svg$Events$onClick(
 					$author$project$Voronoi$ToggleEdgeTongue(
 						$author$project$Voronoi$lineCoord(edge)))
@@ -8537,11 +8537,11 @@ var $author$project$Voronoi$DragStart = function (a) {
 	return {$: 'DragStart', a: a};
 };
 var $elm$svg$Svg$circle = $elm$svg$Svg$trustedNode('circle');
-var $elm$svg$Svg$Attributes$class = _VirtualDom_attribute('class');
 var $elm$svg$Svg$Attributes$cx = _VirtualDom_attribute('cx');
 var $elm$svg$Svg$Attributes$cy = _VirtualDom_attribute('cy');
 var $elm$svg$Svg$Events$on = $elm$html$Html$Events$on;
 var $elm$svg$Svg$Attributes$r = _VirtualDom_attribute('r');
+var $elm$svg$Svg$Attributes$strokeOpacity = _VirtualDom_attribute('stroke-opacity');
 var $author$project$Voronoi$marker = F2(
 	function (idx, _v0) {
 		var xc = _v0.a;
@@ -8555,10 +8555,10 @@ var $author$project$Voronoi$marker = F2(
 					$elm$svg$Svg$Attributes$cy(
 					$elm$core$String$fromInt(yc)),
 					$elm$svg$Svg$Attributes$r('3'),
-					$elm$svg$Svg$Attributes$class('marker'),
-					$elm$svg$Svg$Attributes$fill('white'),
+					$elm$svg$Svg$Attributes$fillOpacity('0'),
 					$elm$svg$Svg$Attributes$stroke('black'),
-					$elm$svg$Svg$Attributes$strokeWidth('1'),
+					$elm$svg$Svg$Attributes$strokeOpacity('0.75'),
+					$elm$svg$Svg$Attributes$strokeWidth('1.5'),
 					A2(
 					$elm$svg$Svg$Events$on,
 					'mousedown',

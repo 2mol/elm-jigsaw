@@ -5,7 +5,7 @@ serve:
 	cd site/ && python3 -m http.server
 
 watch:
-	rg -telm -thtml -l '' | entr -s 'make build && make serve'
+	rg -telm -thtml -l '' | entr make build
 
 build-release:
 	elm make src/Voronoi.elm --output=site/main.js --optimize
