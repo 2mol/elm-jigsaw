@@ -6,3 +6,6 @@ watch:
 
 build-release:
 	elm make src/Voronoi.elm --output=site/main.js --optimize
+
+deploy: build-release
+	scp -r site/* bakdor:/var/www/puzzleys
