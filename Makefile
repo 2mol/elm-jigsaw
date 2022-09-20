@@ -1,8 +1,11 @@
 build:
 	elm make src/Voronoi.elm --output=site/main.js
 
+serve:
+	cd site/ && python3 -m http.server
+
 watch:
-	rg -telm -l '' | entr make build
+	rg -telm -thtml -l '' | entr -s 'make build && make serve'
 
 build-release:
 	elm make src/Voronoi.elm --output=site/main.js --optimize
