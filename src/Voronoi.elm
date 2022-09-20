@@ -34,7 +34,7 @@ import VoronoiDiagram2d
 
 main : Program () Model Msg
 main =
-    Browser.document
+    Browser.element
         { init = init
         , view = view
         , update = update
@@ -216,14 +216,9 @@ decodeButtonZombieDrag =
 -- VIEW
 
 
-view : Model -> Document Msg
+view : Model -> Html Msg
 view model =
-    { title = "puzzleface"
-    , body =
-        [ Html.text ""
-        , draw model
-        ]
-    }
+    draw model
 
 
 

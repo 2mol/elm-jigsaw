@@ -5241,7 +5241,7 @@ var $elm$core$Task$perform = F2(
 			$elm$core$Task$Perform(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
-var $elm$browser$Browser$document = _Browser_document;
+var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Voronoi$DraggingNothing = {$: 'DraggingNothing'};
 var $author$project$Voronoi$Init = function (a) {
 	return {$: 'Init', a: a};
@@ -9377,19 +9377,10 @@ var $author$project$Voronoi$draw = function (model) {
 				A2($elm$svg$Svg$g, _List_Nil, tongues)
 			]));
 };
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Voronoi$view = function (model) {
-	return {
-		body: _List_fromArray(
-			[
-				$elm$html$Html$text(''),
-				$author$project$Voronoi$draw(model)
-			]),
-		title: 'puzzleface'
-	};
+	return $author$project$Voronoi$draw(model);
 };
-var $author$project$Voronoi$main = $elm$browser$Browser$document(
+var $author$project$Voronoi$main = $elm$browser$Browser$element(
 	{init: $author$project$Voronoi$init, subscriptions: $author$project$Voronoi$subscriptions, update: $author$project$Voronoi$update, view: $author$project$Voronoi$view});
 _Platform_export({'Voronoi':{'init':$author$project$Voronoi$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
