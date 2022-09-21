@@ -19,4 +19,5 @@ build-release:
 	elm make src/Voronoi.elm --output=site/main.js --optimize
 
 deploy: build-release
+	./tailwindcss -i input.css -o site/tailwind.css --minify
 	scp -r site/* bakdor:/var/www/puzzleys
