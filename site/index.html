@@ -5,11 +5,16 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
   <title>puzzle yourself</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/tailwind.css">
   <script src="/main.js"></script>
 </head>
 
 <body>
-  <div id="app"></div>
+  <div class="flex flex-col items-center justify-center min-h-screen">
+    <div >
+      <div id="app"></div>
+    </div>
+  </div>
   <script>var app = Elm.Voronoi.init({
     node: document.getElementById('app')
   });</script>

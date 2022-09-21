@@ -1,3 +1,6 @@
 elm-stuff/
 .direnv/
-main.js
+tailwindcss
+
+site/main.js
+site/tailwind.css
