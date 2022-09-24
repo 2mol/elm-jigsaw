@@ -10,8 +10,8 @@ import CubicSpline2d exposing (CubicSpline2d)
 import Dict exposing (Dict)
 import Direction2d
 import Geometry.Svg
-import Html exposing (Html)
-import Html.Attributes as HtmlA
+import Html exposing (Html, div, text)
+import Html.Attributes as HtmlA exposing (class)
 import Html.Events as HtmlE
 import Json.Decode as Decode exposing (Decoder)
 import LineSegment2d exposing (LineSegment2d)
@@ -57,10 +57,8 @@ type TongueOrientation
 
 
 type alias Model =
-    { debugMessage : String
-
-    -- ephemereal UI state
-    , dragState : DragState
+    { -- ephemereal UI state
+      dragState : DragState
 
     -- Puzzle state
     , numberPieces : Int
@@ -71,8 +69,7 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { debugMessage = "empty"
-      , dragState = DraggingNothing
+    ( { dragState = DraggingNothing
       , numberPieces = 100
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
@@ -218,7 +215,17 @@ decodeButtonZombieDrag =
 
 view : Model -> Html Msg
 view model =
-    draw model
+    div [ class "pt-8" ]
+        [ div [ class "flex space-x-2 py-2" ] [ button, button, button ]
+        , draw model
+        ]
+
+
+button =
+    Html.button
+        [ class "border-4 border-blue-600 hover:border-blue-900 text-white font-bold py-2 px-4 rounded draft"
+        ]
+        [ text "toggle draft mode" ]
 
 
 

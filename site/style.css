@@ -4,3 +4,13 @@ body { padding: 0; margin: 0; }
 svg polyline:hover {stroke: red;}
 
 svg circle:hover {fill: red; stroke:red;}
+
+.draft {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(37 99 235),
+    rgb(37 99 235) 8px,
+    rgb(59 130 246) 8px,
+    rgb(59 130 246) 16px
+  )
+}
