@@ -253,7 +253,7 @@ buttonToggleDraft =
         , class "draft"
         , HtmlE.onClick ToggleDraftMode
         ]
-        [ text "draft mode" ]
+        [ text "toggle draft mode" ]
 
 
 randomIcon =
@@ -342,13 +342,24 @@ draw model =
     canvas model
         800
         600
-        [ Svg.g [] []
-        , Svg.g [] edges
-        , Svg.g [] markers
-        , Svg.g [] tongues
-        , Svg.g [] edgeTargets
-        , Svg.g [] markerTargets
-        ]
+        (if model.draftMode then
+            [ Svg.g [] edges
+            , Svg.g [] markers
+            , Svg.g [] tongues
+            , Svg.g [] edgeTargets
+            , Svg.g [] markerTargets
+            ]
+
+         else
+            [ Svg.g [] edges
+
+            -- , Svg.g [] markers
+            , Svg.g [] tongues
+
+            -- , Svg.g [] edgeTargets
+            -- , Svg.g [] markerTargets
+            ]
+        )
 
 
 lineMidpoint : LineSegment2d Unitless coordinates -> ( Int, Int )
