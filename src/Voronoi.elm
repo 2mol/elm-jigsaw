@@ -24,6 +24,7 @@ import Result
 import Svg exposing (Svg)
 import Svg.Attributes as SvgA
 import Svg.Events as SvgE
+import SvgParser
 import Vector2d
 import VoronoiDiagram2d
 
@@ -236,7 +237,7 @@ decodeButtonZombieDrag =
 
 view : Model -> Html Msg
 view model =
-    div [ class "pt-8" ]
+    div [ class "pt-6" ]
         [ div [ class "flex space-x-2 py-2" ]
             [ buttonToggleDraft
             , buttonRandomize
@@ -245,18 +246,35 @@ view model =
         ]
 
 
+draftFalseIcon : Html msg
+draftFalseIcon =
+    """
+<svg xmlns="http://www.w3.org/2000/svg" class="mr-2 -ml-1 w-5 h-5" width="24" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+   <path d="M10.003 9.997l-6.003 6.003v4h4l6.006 -6.006m1.99 -1.99l2.504 -2.504a2.828 2.828 0 1 0 -4 -4l-2.5 2.5"></path>
+   <path d="M13.5 6.5l4 4"></path>
+   <path d="M3 3l18 18"></path>
+</svg>
+    """
+        |> SvgParser.parse
+        |> Result.withDefault (text "")
+
+
+buttonToggleDraft : Html Msg
 buttonToggleDraft =
     Html.button
         [ class "font-bold py-2 px-4 rounded"
+        , class "text-center inline-flex items-center"
         , class "draft"
         , HtmlE.onClick ToggleDraftMode
         ]
-        [ text "toggle draft mode" ]
+        [ draftFalseIcon, text "toggle draft mode" ]
 
 
+randomIcon : Html msg
 randomIcon =
     """
-<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrows-random" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" class="mr-2 -ml-1 w-5 h-5" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
    <path d="M20 21.004h-4v-4"></path>
    <path d="M16 21.004l5 -5"></path>
@@ -268,15 +286,18 @@ randomIcon =
    <path d="M20.5 9.004l-4.5 -5.5"></path>
 </svg>
     """
+        |> SvgParser.parse
+        |> Result.withDefault (text "")
 
 
+buttonRandomize : Html Msg
 buttonRandomize =
     Html.button
-        [ class "bg-yellow-500 hover:bg-yellow-400 text-white font-bold py-2 px-4 rounded"
+        [ class "bg-yellow-400 hover:bg-yellow-300 text-white font-bold py-2 px-4 rounded"
         , class "text-center inline-flex items-center"
         , HtmlE.onClick Randomize
         ]
-        [ text "randomize" ]
+        [ randomIcon, text "randomize" ]
 
 
 
