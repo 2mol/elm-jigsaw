@@ -4,14 +4,14 @@ import Angle
 import Array exposing (Array)
 import Axis2d
 import BoundingBox2d
-import Browser exposing (Document)
+import Browser
 import Browser.Events as E
 import CubicSpline2d exposing (CubicSpline2d)
 import Dict exposing (Dict)
 import Direction2d
 import Geometry.Svg
 import Html exposing (Html, div, text)
-import Html.Attributes as HtmlA exposing (class)
+import Html.Attributes exposing (class)
 import Html.Events as HtmlE
 import Json.Decode as Decode exposing (Decoder)
 import LineSegment2d exposing (LineSegment2d)
@@ -26,6 +26,11 @@ import Svg.Attributes as SvgA
 import Svg.Events as SvgE
 import Vector2d
 import VoronoiDiagram2d
+
+
+debugThis : Bool
+debugThis =
+    False
 
 
 
@@ -56,10 +61,17 @@ type TongueOrientation
     | Theotherway
 
 
+type HoveringOverThing
+    = HoverEdge ( Int, Int )
+    | HoverMarker ( Int, Int )
+    | HoverNothing
+
+
 type alias Model =
     { -- ephemereal UI state
       dragState : DragState
     , draftMode : Bool
+    , hoveringOver : HoveringOverThing
 
     -- Puzzle state
     , numberPieces : Int
@@ -72,6 +84,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { dragState = DraggingNothing
       , draftMode = True
+      , hoveringOver = HoverNothing
       , numberPieces = 100
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
@@ -110,6 +123,7 @@ type Msg
     | ToggleEdgeTongue ( Int, Int )
     | ToggleDraftMode
     | Randomize
+    | HoverOverSomething HoveringOverThing
 
 
 updateModel : Msg -> Model -> Model
@@ -171,6 +185,9 @@ updateModel msg model =
 
         ToggleDraftMode ->
             { model | draftMode = not model.draftMode }
+
+        HoverOverSomething thing ->
+            { model | hoveringOver = thing }
 
         _ ->
             model
@@ -274,10 +291,18 @@ draw model =
         points =
             Array.map (\( x, y ) -> Point2d.unitless x y) model.voronoiPoints
 
-        markers =
+        markerCoords =
             Array.map Point2d.toUnitless points
                 |> Array.map (\p -> ( round p.x, round p.y ))
-                |> Array.indexedMap marker
+
+        markers =
+            markerCoords
+                |> Array.map (drawMarker model.hoveringOver)
+                |> Array.toList
+
+        markerTargets =
+            markerCoords
+                |> Array.indexedMap drawMarkerTarget
                 |> Array.toList
 
         voronoi =
@@ -292,7 +317,7 @@ draw model =
         edgeSegments =
             List.map Tuple.second polygons
                 |> List.concatMap Polygon2d.edges
-                |> List.uniqueBy lineCoord
+                |> List.uniqueBy lineMidpoint
 
         tongues =
             edgeSegments
@@ -309,36 +334,25 @@ draw model =
                      else
                         not << edgeHasTongue model.edgeTongues
                     )
-                |> List.map (drawEdge model.edgeTongues)
+                |> List.map (drawEdge model.edgeTongues model.hoveringOver)
+
+        edgeTargets =
+            List.map drawEdgeTarget edgeSegments
     in
     canvas model
         800
         600
-        [ Svg.g [] edges
+        [ Svg.g [] []
+        , Svg.g [] edges
         , Svg.g [] markers
         , Svg.g [] tongues
-
-        -- , drawWiggly baseWiggly
-        -- , Svg.g []
-        --     (List.map2
-        --         (\x y ->
-        --             Svg.circle
-        --                 [ SvgA.cx <| String.fromInt x
-        --                 , SvgA.cy <| String.fromInt y
-        --                 , SvgA.r "1"
-        --                 , SvgA.stroke "crimson"
-        --                 , SvgA.strokeWidth "1"
-        --                 ]
-        --                 []
-        --         )
-        --         (List.map ((*) 10) (List.range 0 50))
-        --         (List.map ((*) 10) (List.range 0 50))
-        --     )
+        , Svg.g [] edgeTargets
+        , Svg.g [] markerTargets
         ]
 
 
-lineCoord : LineSegment2d Unitless coordinates -> ( Int, Int )
-lineCoord lineSegment =
+lineMidpoint : LineSegment2d Unitless coordinates -> ( Int, Int )
+lineMidpoint lineSegment =
     -- a little "trick" to compare edges for equality
     -- independent of orientation: just compare their midpoint
     LineSegment2d.midpoint lineSegment
@@ -348,40 +362,116 @@ lineCoord lineSegment =
 
 edgeHasTongue : Dict ( Int, Int ) v -> LineSegment2d Unitless coordinates -> Bool
 edgeHasTongue edgeTongues edge =
-    Dict.member (lineCoord edge) edgeTongues
+    Dict.member (lineMidpoint edge) edgeTongues
 
 
 
 -- SVG HELPERS
 
 
-marker : Int -> ( Int, Int ) -> Svg Msg
-marker idx ( xc, yc ) =
+drawMarker : HoveringOverThing -> ( Int, Int ) -> Svg Msg
+drawMarker hoverThing ( xc, yc ) =
+    let
+        isBeingHoveredOver =
+            hoverThing == HoverMarker ( xc, yc )
+    in
     Svg.circle
         [ SvgA.cx <| String.fromInt xc
         , SvgA.cy <| String.fromInt yc
         , SvgA.r "3"
-        , SvgA.fillOpacity "0"
-        , SvgA.stroke "black"
-        , SvgA.strokeOpacity "0.75"
-        , SvgA.strokeWidth "1.5"
-        , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
+        , SvgA.fill "crimson"
+        , SvgA.fillOpacity
+            (if isBeingHoveredOver then
+                "1"
+
+             else
+                "0"
+            )
+        , SvgA.stroke
+            (if isBeingHoveredOver then
+                "crimson"
+
+             else
+                "black"
+            )
+        , SvgA.strokeWidth "1"
         ]
         []
 
 
-drawEdge : Dict ( Int, Int ) TongueOrientation -> LineSegment2d Unitless coordinates -> Svg Msg
-drawEdge edgeTongues edge =
+drawMarkerTarget : Int -> ( Int, Int ) -> Svg Msg
+drawMarkerTarget idx ( xc, yc ) =
+    Svg.circle
+        [ SvgA.cx <| String.fromInt xc
+        , SvgA.cy <| String.fromInt yc
+        , SvgA.r "10"
+        , SvgA.fill "red"
+        , SvgA.fillOpacity
+            (if debugThis then
+                "0.2"
+
+             else
+                "0"
+            )
+        , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
+        , SvgE.onMouseOver (HoverOverSomething <| HoverMarker ( xc, yc ))
+        , SvgE.onMouseOut (HoverOverSomething HoverNothing)
+        ]
+        []
+
+
+drawEdge :
+    Dict ( Int, Int ) TongueOrientation
+    -> HoveringOverThing
+    -> LineSegment2d Unitless coordinates
+    -> Svg Msg
+drawEdge edgeTongues hoverThing edge =
+    let
+        midpoint =
+            lineMidpoint edge
+
+        isBeingHoveredOver =
+            hoverThing == HoverEdge midpoint
+    in
     Geometry.Svg.lineSegment2d
         [ SvgA.stroke
-            (if edgeHasTongue edgeTongues edge then
+            (if isBeingHoveredOver then
+                "crimson"
+
+             else if edgeHasTongue edgeTongues edge then
                 "#aaa"
 
              else
                 "black"
             )
         , SvgA.strokeWidth "2"
-        , SvgE.onClick (ToggleEdgeTongue (lineCoord edge))
+        ]
+        edge
+
+
+drawEdgeTarget :
+    LineSegment2d Unitless coordinates
+    -> Svg Msg
+drawEdgeTarget edge =
+    let
+        midpoint =
+            lineMidpoint edge
+    in
+    Geometry.Svg.lineSegment2d
+        [ SvgA.strokeWidth "20"
+        , SvgA.stroke "red"
+
+        -- , SvgA.strokeOpacity "0.2"
+        , SvgA.strokeOpacity
+            (if debugThis then
+                "0.2"
+
+             else
+                "0"
+            )
+        , SvgE.onClick (ToggleEdgeTongue midpoint)
+        , SvgE.onMouseOver (HoverOverSomething <| HoverEdge midpoint)
+        , SvgE.onMouseOut (HoverOverSomething HoverNothing)
         ]
         edge
 
@@ -397,7 +487,7 @@ tongueFilterMap edgeDict edge =
                 Theotherway ->
                     flip edge
     in
-    Dict.get (lineCoord edge) edgeDict
+    Dict.get (lineMidpoint edge) edgeDict
         |> Maybe.map flipIf
 
 
@@ -442,10 +532,10 @@ canvas model w h children =
 
         border =
             Svg.rect
-                [ SvgA.x "2"
-                , SvgA.y "2"
-                , SvgA.width (String.fromInt <| w - 4)
-                , SvgA.height (String.fromInt <| h - 4)
+                [ SvgA.x "1"
+                , SvgA.y "1"
+                , SvgA.width (String.fromInt <| w - 2)
+                , SvgA.height (String.fromInt <| h - 2)
                 , SvgA.stroke "black"
                 , SvgA.strokeWidth "2"
                 , SvgA.fillOpacity "0"
