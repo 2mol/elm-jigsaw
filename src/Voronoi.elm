@@ -240,8 +240,6 @@ view model =
         [ div [ class "flex space-x-2 py-2" ]
             [ buttonToggleDraft
             , buttonRandomize
-
-            -- , buttonToggleDraft
             ]
         , draw model
         ]
@@ -355,8 +353,8 @@ draw model =
 
             -- , Svg.g [] markers
             , Svg.g [] tongues
+            , Svg.g [] edgeTargets
 
-            -- , Svg.g [] edgeTargets
             -- , Svg.g [] markerTargets
             ]
         )
