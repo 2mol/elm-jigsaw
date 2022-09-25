@@ -59,6 +59,7 @@ type TongueOrientation
 type alias Model =
     { -- ephemereal UI state
       dragState : DragState
+    , draftMode : Bool
 
     -- Puzzle state
     , numberPieces : Int
@@ -70,6 +71,7 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { dragState = DraggingNothing
+      , draftMode = False
       , numberPieces = 100
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
@@ -216,16 +218,46 @@ decodeButtonZombieDrag =
 view : Model -> Html Msg
 view model =
     div [ class "pt-8" ]
-        [ div [ class "flex space-x-2 py-2" ] [ button, button, button ]
+        [ div [ class "flex space-x-2 py-2" ]
+            [ buttonToggleDraft
+            , buttonRandomize
+
+            -- , buttonToggleDraft
+            ]
         , draw model
         ]
 
 
-button =
+buttonToggleDraft =
     Html.button
-        [ class "border-4 border-blue-600 hover:border-blue-900 text-white font-bold py-2 px-4 rounded draft"
+        [ class "font-bold py-2 px-4 rounded"
+        , class "draft"
         ]
-        [ text "toggle draft mode" ]
+        [ text "draft mode" ]
+
+
+randomIcon =
+    """
+<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrows-random" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+   <path d="M20 21.004h-4v-4"></path>
+   <path d="M16 21.004l5 -5"></path>
+   <path d="M6.5 9.504l-3.5 -2l2 -3.504"></path>
+   <path d="M3 7.504l6.83 -1.87"></path>
+   <path d="M4 16.004l4 -1l1 4"></path>
+   <path d="M8 15.004l-3.5 6"></path>
+   <path d="M21 5.004l-.5 4l-4 -.5"></path>
+   <path d="M20.5 9.004l-4.5 -5.5"></path>
+</svg>
+    """
+
+
+buttonRandomize =
+    Html.button
+        [ class "bg-yellow-500 hover:bg-yellow-400 text-white font-bold py-2 px-4 rounded"
+        , class "text-center inline-flex items-center"
+        ]
+        [ text "randomize" ]
 
 
 

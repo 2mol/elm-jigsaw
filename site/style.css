@@ -8,9 +8,9 @@ svg circle:hover {fill: red; stroke:red;}
 .draft {
   background: repeating-linear-gradient(
     -45deg,
-    rgb(37 99 235),
-    rgb(37 99 235) 8px,
-    rgb(59 130 246) 8px,
-    rgb(59 130 246) 16px
+    rgb(231, 225, 221),
+    rgb(231, 225, 221) 8px,
+    rgb(219, 212, 208) 8px,
+    rgb(219, 212, 208) 16px
   )
 }
