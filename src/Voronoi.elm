@@ -71,18 +71,10 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { dragState = DraggingNothing
-      , draftMode = False
+      , draftMode = True
       , numberPieces = 100
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
-
-      --   , puzzle =
-      --         { piecesX = 18
-      --         , piecesY = 13
-      --         , gridPerturb = 3
-      --         , seed = Random.initialSeed 768
-      --         , draftMode = True
-      --         }
       }
     , Random.generate Init (genXYCoordinates 150)
     )
@@ -116,6 +108,8 @@ type Msg
     | DragMoving Int Bool Int Int
     | DragStop
     | ToggleEdgeTongue ( Int, Int )
+    | ToggleDraftMode
+    | Randomize
 
 
 updateModel : Msg -> Model -> Model
@@ -175,13 +169,21 @@ updateModel msg model =
             in
             { model | edgeTongues = newEdgeTongues }
 
+        ToggleDraftMode ->
+            { model | draftMode = not model.draftMode }
+
         _ ->
             model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( updateModel msg model, Cmd.none )
+    case msg of
+        Randomize ->
+            ( model, Random.generate Init (genXYCoordinates 150) )
+
+        _ ->
+            ( updateModel msg model, Cmd.none )
 
 
 
@@ -232,6 +234,7 @@ buttonToggleDraft =
     Html.button
         [ class "font-bold py-2 px-4 rounded"
         , class "draft"
+        , HtmlE.onClick ToggleDraftMode
         ]
         [ text "draft mode" ]
 
@@ -256,6 +259,7 @@ buttonRandomize =
     Html.button
         [ class "bg-yellow-500 hover:bg-yellow-400 text-white font-bold py-2 px-4 rounded"
         , class "text-center inline-flex items-center"
+        , HtmlE.onClick Randomize
         ]
         [ text "randomize" ]
 
@@ -285,24 +289,32 @@ draw model =
                 (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 800 600))
                 voronoi
 
-        edges =
+        edgeSegments =
             List.map Tuple.second polygons
                 |> List.concatMap Polygon2d.edges
                 |> List.uniqueBy lineCoord
 
         tongues =
-            edges
+            edgeSegments
                 |> List.filterMap (tongueFilterMap model.edgeTongues)
                 |> List.map (fitWiggly baseWiggly)
-                |> List.map drawWiggly
+                |> List.map (drawWiggly model.draftMode)
 
-        svgEdges =
-            List.map (drawEdge model.edgeTongues) edges
+        edges =
+            edgeSegments
+                |> List.filter
+                    (if model.draftMode then
+                        always True
+
+                     else
+                        not << edgeHasTongue model.edgeTongues
+                    )
+                |> List.map (drawEdge model.edgeTongues)
     in
-    canvas
+    canvas model
         800
         600
-        [ Svg.g [] svgEdges
+        [ Svg.g [] edges
         , Svg.g [] markers
         , Svg.g [] tongues
 
@@ -334,6 +346,11 @@ lineCoord lineSegment =
         |> (\{ x, y } -> ( round x, round y ))
 
 
+edgeHasTongue : Dict ( Int, Int ) v -> LineSegment2d Unitless coordinates -> Bool
+edgeHasTongue edgeTongues edge =
+    Dict.member (lineCoord edge) edgeTongues
+
+
 
 -- SVG HELPERS
 
@@ -357,11 +374,11 @@ drawEdge : Dict ( Int, Int ) TongueOrientation -> LineSegment2d Unitless coordin
 drawEdge edgeTongues edge =
     Geometry.Svg.lineSegment2d
         [ SvgA.stroke
-            (if Dict.member (lineCoord edge) edgeTongues then
-                "#bbb"
+            (if edgeHasTongue edgeTongues edge then
+                "#aaa"
 
              else
-                "#666"
+                "black"
             )
         , SvgA.strokeWidth "2"
         , SvgE.onClick (ToggleEdgeTongue (lineCoord edge))
@@ -400,8 +417,8 @@ flip segment =
 -- CANVAS HELPERS
 
 
-canvas : Int -> Int -> List (Svg Msg) -> Html Msg
-canvas w h children =
+canvas : Model -> Int -> Int -> List (Svg Msg) -> Html Msg
+canvas model w h children =
     let
         hStr =
             String.fromInt h
@@ -425,10 +442,10 @@ canvas w h children =
 
         border =
             Svg.rect
-                [ SvgA.x "0"
-                , SvgA.y "0"
-                , SvgA.width wStr
-                , SvgA.height hStr
+                [ SvgA.x "2"
+                , SvgA.y "2"
+                , SvgA.width (String.fromInt <| w - 4)
+                , SvgA.height (String.fromInt <| h - 4)
                 , SvgA.stroke "black"
                 , SvgA.strokeWidth "2"
                 , SvgA.fillOpacity "0"
@@ -440,7 +457,13 @@ canvas w h children =
         , SvgA.height hStr
         , SvgA.viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
         ]
-        [ Svg.g [] tiles
+        [ Svg.g []
+            (if model.draftMode then
+                tiles
+
+             else
+                []
+            )
         , border
         , Svg.g [] children
         ]
@@ -525,10 +548,21 @@ fitWiggly ( w1, w2 ) segment =
     )
 
 
-drawWiggly : Wiggly -> Svg msg
-drawWiggly ( w1, w2 ) =
+drawWiggly : Bool -> Wiggly -> Svg msg
+drawWiggly draftMode ( w1, w2 ) =
     let
         drawHalf spline =
-            Geometry.Svg.cubicSpline2d [ SvgA.stroke "crimson", SvgA.fillOpacity "0", SvgA.strokeWidth "2.5" ] spline
+            Geometry.Svg.cubicSpline2d
+                [ SvgA.stroke
+                    (if draftMode then
+                        "crimson"
+
+                     else
+                        "black"
+                    )
+                , SvgA.fillOpacity "0"
+                , SvgA.strokeWidth "2"
+                ]
+                spline
     in
     Svg.g [] [ drawHalf w1, drawHalf w2 ]
