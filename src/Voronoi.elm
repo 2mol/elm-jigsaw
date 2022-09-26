@@ -81,16 +81,20 @@ type alias Model =
     }
 
 
+initNumberPieces =
+    100
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { dragState = DraggingNothing
       , draftMode = True
       , hoveringOver = HoverNothing
-      , numberPieces = 100
+      , numberPieces = initNumberPieces
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
       }
-    , Random.generate Init (genXYCoordinates 150)
+    , Random.generate Init (genXYCoordinates initNumberPieces)
     )
 
 
@@ -125,6 +129,7 @@ type Msg
     | ToggleDraftMode
     | Randomize
     | HoverOverSomething HoveringOverThing
+    | SetNumberPieces Int
 
 
 updateModel : Msg -> Model -> Model
@@ -190,6 +195,9 @@ updateModel msg model =
         HoverOverSomething thing ->
             { model | hoveringOver = thing }
 
+        SetNumberPieces n ->
+            { model | numberPieces = n }
+
         _ ->
             model
 
@@ -198,7 +206,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Randomize ->
-            ( model, Random.generate Init (genXYCoordinates 150) )
+            ( model, Random.generate Init (genXYCoordinates model.numberPieces) )
+
+        SetNumberPieces n ->
+            ( model, Random.generate Init (genXYCoordinates n) )
 
         _ ->
             ( updateModel msg model, Cmd.none )
@@ -238,12 +249,30 @@ decodeButtonZombieDrag =
 view : Model -> Html Msg
 view model =
     div [ class "pt-6" ]
-        [ div [ class "flex space-x-2 py-2" ]
-            [ buttonToggleDraft
-            , buttonRandomize
-            ]
+        [ buttonBar model
         , draw model
         ]
+
+
+buttonBar model =
+    div [ class "flex space-x-2 py-2" ]
+        [ buttonToggleDraft model.draftMode
+        , buttonRandomize
+        , buttonNumberPieces 20
+        , buttonNumberPieces 50
+        , buttonNumberPieces 100
+        , buttonNumberPieces 250
+        ]
+
+
+buttonNumberPieces : Int -> Html Msg
+buttonNumberPieces n =
+    Html.button
+        [ class "bg-slate-500 hover:bg-slate-400 text-white font-bold py-2 px-4 rounded"
+        , class "text-center inline-flex items-center"
+        , HtmlE.onClick (SetNumberPieces n)
+        ]
+        [ text <| String.fromInt n ]
 
 
 draftFalseIcon : Html msg
@@ -260,15 +289,38 @@ draftFalseIcon =
         |> Result.withDefault (text "")
 
 
-buttonToggleDraft : Html Msg
-buttonToggleDraft =
+draftTrueIcon : Html msg
+draftTrueIcon =
+    """
+<svg xmlns="http://www.w3.org/2000/svg" class="mr-2 -ml-1 w-5 h-5" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+   <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4"></path>
+   <line x1="13.5" y1="6.5" x2="17.5" y2="10.5"></line>
+</svg>
+    """
+        |> SvgParser.parse
+        |> Result.withDefault (text "")
+
+
+buttonToggleDraft : Bool -> Html Msg
+buttonToggleDraft draftMode =
     Html.button
         [ class "font-bold py-2 px-4 rounded"
         , class "text-center inline-flex items-center"
-        , class "draft"
+        , if draftMode then
+            class "bg-blue-300 hover:bg-blue-200"
+
+          else
+            class "draft"
         , HtmlE.onClick ToggleDraftMode
         ]
-        [ draftFalseIcon, text "toggle draft mode" ]
+        [ if draftMode then
+            draftFalseIcon
+
+          else
+            draftTrueIcon
+        , text "toggle draft mode"
+        ]
 
 
 randomIcon : Html msg
@@ -293,7 +345,7 @@ randomIcon =
 buttonRandomize : Html Msg
 buttonRandomize =
     Html.button
-        [ class "bg-yellow-400 hover:bg-yellow-300 text-white font-bold py-2 px-4 rounded"
+        [ class "bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded"
         , class "text-center inline-flex items-center"
         , HtmlE.onClick Randomize
         ]
