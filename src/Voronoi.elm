@@ -486,7 +486,7 @@ drawMarkerTarget idx ( xc, yc ) =
     Svg.circle
         [ SvgA.cx <| String.fromInt xc
         , SvgA.cy <| String.fromInt yc
-        , SvgA.r "10"
+        , SvgA.r "8"
         , SvgA.fill "red"
         , SvgA.fillOpacity
             (if debugThis then
@@ -540,7 +540,7 @@ drawEdgeTarget edge =
             lineMidpoint edge
     in
     Geometry.Svg.lineSegment2d
-        [ SvgA.strokeWidth "20"
+        [ SvgA.strokeWidth "16"
         , SvgA.stroke "red"
 
         -- , SvgA.strokeOpacity "0.2"
