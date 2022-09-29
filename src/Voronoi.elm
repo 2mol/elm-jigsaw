@@ -252,35 +252,45 @@ view model =
     div [ class "pt-6" ]
         [ buttonBar model
         , draw model
-        , connectors model
+        , [ baseWiggly, baseWiggly, baseWiggly, baseWiggly ]
+            |> List.map (connectorSelector model)
+            |> div
+                [ class "flex flex-row space-x-2"
+                , class "mt-2"
+
+                -- , class "border border-gray-300"
+                ]
         ]
 
 
-connectors : Model -> Html Msg
-connectors model =
+connectorSelector : Model -> Connector -> Html Msg
+connectorSelector model connector =
     let
+        width =
+            120
+
+        height =
+            60
+
         normalizer =
-            LineSegment2d.from (Point2d.unitless 5 60) (Point2d.unitless 200 60)
+            LineSegment2d.from (Point2d.unitless 5 height) (Point2d.unitless width height)
     in
-    div [ class "border border-gray-300" ]
-        [ Svg.svg
-            [ SvgA.width "205"
-            , SvgA.height "65"
-            , SvgA.viewBox "0 0 205 65"
-            ]
-            [ fitConnector baseWiggly normalizer
+    div [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer" ]
+        [ simpleCanvas (width + 5)
+            (height + 5)
+            [ fitConnector connector normalizer
                 |> drawConnector True
             , Svg.circle
                 [ SvgA.cx "5"
-                , SvgA.cy "60"
+                , SvgA.cy (String.fromInt height)
                 , SvgA.r "3"
                 , SvgA.fill "black"
                 , SvgA.fillOpacity "1"
                 ]
                 []
             , Svg.circle
-                [ SvgA.cx "200"
-                , SvgA.cy "60"
+                [ SvgA.cx (String.fromInt width)
+                , SvgA.cy (String.fromInt height)
                 , SvgA.r "3"
                 , SvgA.fill "black"
                 , SvgA.fillOpacity "1"
@@ -676,6 +686,19 @@ canvas model w h children =
         , border
         , Svg.g [] children
         ]
+
+
+simpleCanvas : Int -> Int -> List (Svg msg) -> Html msg
+simpleCanvas width height content =
+    Svg.svg
+        [ SvgA.width (String.fromInt width)
+        , SvgA.height (String.fromInt height)
+        , [ 0, 0, width, height ]
+            |> List.map String.fromInt
+            |> String.join " "
+            |> SvgA.viewBox
+        ]
+        content
 
 
 tile : Int -> Int -> Int -> Svg Msg
