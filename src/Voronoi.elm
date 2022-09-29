@@ -81,6 +81,7 @@ type alias Model =
     }
 
 
+initNumberPieces : Int
 initNumberPieces =
     100
 
@@ -251,9 +252,45 @@ view model =
     div [ class "pt-6" ]
         [ buttonBar model
         , draw model
+        , connectors model
         ]
 
 
+connectors : Model -> Html Msg
+connectors model =
+    let
+        normalizer =
+            LineSegment2d.from (Point2d.unitless 5 60) (Point2d.unitless 200 60)
+    in
+    div [ class "border border-gray-300" ]
+        [ Svg.svg
+            [ SvgA.width "205"
+            , SvgA.height "65"
+            , SvgA.viewBox "0 0 205 65"
+            ]
+            [ fitConnector baseWiggly normalizer
+                |> drawConnector True
+            , Svg.circle
+                [ SvgA.cx "5"
+                , SvgA.cy "60"
+                , SvgA.r "3"
+                , SvgA.fill "black"
+                , SvgA.fillOpacity "1"
+                ]
+                []
+            , Svg.circle
+                [ SvgA.cx "200"
+                , SvgA.cy "60"
+                , SvgA.r "3"
+                , SvgA.fill "black"
+                , SvgA.fillOpacity "1"
+                ]
+                []
+            ]
+        ]
+
+
+buttonBar : Model -> Html Msg
 buttonBar model =
     div [ class "flex space-x-2 py-2" ]
         [ buttonToggleDraft model.draftMode
@@ -393,8 +430,8 @@ draw model =
         tongues =
             edgeSegments
                 |> List.filterMap (tongueFilterMap model.edgeTongues)
-                |> List.map (fitWiggly baseWiggly)
-                |> List.map (drawWiggly model.draftMode)
+                |> List.map (fitConnector baseWiggly)
+                |> List.map (drawConnector model.draftMode)
 
         edges =
             edgeSegments
@@ -665,11 +702,11 @@ tile size xc yc =
 -- TONGUES
 
 
-type alias Wiggly =
+type alias Connector =
     ( CubicSpline2d Unitless (), CubicSpline2d Unitless () )
 
 
-baseWiggly : Wiggly
+baseWiggly : Connector
 baseWiggly =
     let
         baseShape =
@@ -689,8 +726,8 @@ baseWiggly =
     ( baseShape, mirroredBaseShape )
 
 
-fitWiggly : Wiggly -> LineSegment2d Unitless () -> Wiggly
-fitWiggly ( w1, w2 ) segment =
+fitConnector : Connector -> LineSegment2d Unitless () -> Connector
+fitConnector ( w1, w2 ) segment =
     let
         pivot =
             CubicSpline2d.startPoint w1
@@ -720,8 +757,8 @@ fitWiggly ( w1, w2 ) segment =
     )
 
 
-drawWiggly : Bool -> Wiggly -> Svg msg
-drawWiggly draftMode ( w1, w2 ) =
+drawConnector : Bool -> Connector -> Svg msg
+drawConnector draftMode ( w1, w2 ) =
     let
         drawHalf spline =
             Geometry.Svg.cubicSpline2d
