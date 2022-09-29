@@ -275,29 +275,30 @@ connectorSelector model connector =
         normalizer =
             LineSegment2d.from (Point2d.unitless 5 height) (Point2d.unitless width height)
     in
-    div [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer" ]
-        [ simpleCanvas (width + 5)
+    div
+        [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
+        ]
+        [ simpleCanvas
+            (width + 5)
             (height + 5)
             [ fitConnector connector normalizer
                 |> drawConnector True
-            , Svg.circle
-                [ SvgA.cx "5"
-                , SvgA.cy (String.fromInt height)
-                , SvgA.r "3"
-                , SvgA.fill "black"
-                , SvgA.fillOpacity "1"
-                ]
-                []
-            , Svg.circle
-                [ SvgA.cx (String.fromInt width)
-                , SvgA.cy (String.fromInt height)
-                , SvgA.r "3"
-                , SvgA.fill "black"
-                , SvgA.fillOpacity "1"
-                ]
-                []
+            , drawDot 5 height
+            , drawDot width height
             ]
         ]
+
+
+drawDot : Int -> Int -> Svg msg
+drawDot x y =
+    Svg.circle
+        [ SvgA.cx (String.fromInt x)
+        , SvgA.cy (String.fromInt y)
+        , SvgA.r "3"
+        , SvgA.fill "black"
+        , SvgA.fillOpacity "1"
+        ]
+        []
 
 
 buttonBar : Model -> Html Msg
