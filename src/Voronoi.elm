@@ -726,13 +726,16 @@ tile size xc yc =
 
 
 type alias Connector =
-    ( CubicSpline2d Unitless (), CubicSpline2d Unitless () )
+    ( CubicSpline2d Unitless ()
+    , List (CubicSpline2d Unitless ())
+    , CubicSpline2d Unitless ()
+    )
 
 
 baseWiggly : Connector
 baseWiggly =
     let
-        baseShape =
+        baseSpline =
             CubicSpline2d.fromControlPoints
                 -- startpoint
                 (Point2d.unitless 50 120)
@@ -742,15 +745,15 @@ baseWiggly =
                 -- endpoint
                 (Point2d.unitless 150 70)
 
-        mirroredBaseShape =
-            CubicSpline2d.mirrorAcross Axis2d.y baseShape
+        mirroredBaseSpline =
+            CubicSpline2d.mirrorAcross Axis2d.y baseSpline
                 |> CubicSpline2d.translateBy (Vector2d.unitless 300 0)
     in
-    ( baseShape, mirroredBaseShape )
+    ( baseSpline, [], mirroredBaseSpline )
 
 
 fitConnector : Connector -> LineSegment2d Unitless () -> Connector
-fitConnector ( w1, w2 ) segment =
+fitConnector ( w1, splines, w2 ) segment =
     let
         pivot =
             CubicSpline2d.startPoint w1
@@ -776,14 +779,15 @@ fitConnector ( w1, w2 ) segment =
                 |> CubicSpline2d.rotateAround (LineSegment2d.startPoint segment) rotationAngle
     in
     ( fit w1
+    , List.map fit splines
     , fit w2
     )
 
 
 drawConnector : Bool -> Connector -> Svg msg
-drawConnector draftMode ( w1, w2 ) =
+drawConnector draftMode ( w1, splines, w2 ) =
     let
-        drawHalf spline =
+        drawSpline spline =
             Geometry.Svg.cubicSpline2d
                 [ SvgA.stroke
                     (if draftMode then
@@ -797,4 +801,7 @@ drawConnector draftMode ( w1, w2 ) =
                 ]
                 spline
     in
-    Svg.g [] [ drawHalf w1, drawHalf w2 ]
+    drawSpline w1
+        :: drawSpline w2
+        :: List.map drawSpline splines
+        |> Svg.g []
