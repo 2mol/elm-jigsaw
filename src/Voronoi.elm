@@ -755,14 +755,24 @@ baseWiggly =
 fitConnector : Connector -> LineSegment2d Unitless () -> Connector
 fitConnector ( w1, splines, w2 ) segment =
     let
-        pivot =
+        startPoint =
             CubicSpline2d.startPoint w1
+
+        endPoint =
+            CubicSpline2d.startPoint w2
+
+        pivot =
+            startPoint
+
+        length =
+            Point2d.distanceFrom startPoint endPoint
+                |> Quantity.toFloat
 
         segmentLen =
             LineSegment2d.length segment |> Quantity.toFloat
 
         scale spline =
-            CubicSpline2d.scaleAbout pivot (1 / 200 * segmentLen) spline
+            CubicSpline2d.scaleAbout pivot (1 / length * segmentLen) spline
 
         translationVector =
             Vector2d.from pivot (LineSegment2d.startPoint segment)
