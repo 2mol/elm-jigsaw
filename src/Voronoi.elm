@@ -252,15 +252,99 @@ view model =
     div [ class "pt-6" ]
         [ buttonBar model
         , draw model
-        , [ baseWiggly, baseWiggly, baseWiggly, baseWiggly ]
-            |> List.map (connectorSelector model)
-            |> div
-                [ class "flex flex-row space-x-2"
-                , class "mt-2"
-
-                -- , class "border border-gray-300"
-                ]
+        , connectorSelectors model
         ]
+
+
+connectorSelectors : Model -> Html Msg
+connectorSelectors model =
+    let
+        bla =
+            Debug.log "path"
+                testWiggly
+    in
+    [ connectorSelector model baseWiggly
+    , testWiggly
+        |> Result.toMaybe
+        |> Maybe.andThen extractConnectorPath
+        |> Maybe.withDefault ""
+        |> connectorSelectorSvg model
+    ]
+        |> div
+            [ class "flex flex-row space-x-2"
+            , class "mt-2"
+            ]
+
+
+testWiggly =
+    """
+<svg xmlns="http://www.w3.org/2000/svg" width="265.573" height="102.652"><g style="mix-blend-mode:normal"><path d="M-673.15-336.088c260.828-40.459 551.256 76.637 494.36-71.295-48.678-126.562-263.135-76.994-201.196-199.018 76.303-150.322 511.483-320.839 704.865-209.944C453.213-742.75 181.523-507.889 177.762-408.57c-3.76 99.317 247.851 37.899 499.463-23.52" fill="none" stroke="#000" stroke-width="5" stroke-dasharray="0" transform="matrix(.19667 0 0 .19667 132.386 167.539)" style="mix-blend-mode:normal"/></g></svg>
+    """
+        |> SvgParser.parseToNode
+
+
+
+-- |> Result.withDefault (SvgParser.SvgText "")
+-- |> extractConnectorSvg
+-- |> SvgParser.nodeToSvg
+
+
+extractConnectorPath : SvgParser.SvgNode -> Maybe String
+extractConnectorPath node =
+    case node of
+        SvgParser.SvgElement element ->
+            if element.name == "path" then
+                List.filter (\( attr, _ ) -> attr == "d") element.attributes
+                    |> List.head
+                    |> Maybe.map Tuple.second
+
+            else
+                List.filterMap extractConnectorPath element.children
+                    |> List.head
+
+        _ ->
+            Nothing
+
+
+connectorSelectorSvg : Model -> String -> Html Msg
+connectorSelectorSvg model connector =
+    let
+        width =
+            120
+
+        height =
+            60
+
+        normalizer =
+            LineSegment2d.from (Point2d.unitless 5 height) (Point2d.unitless width height)
+    in
+    div
+        [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
+        ]
+        [
+        testWiggly
+        |> Result.withDefault (SvgParser.SvgText "")
+        |> SvgParser.nodeToSvg
+        ]
+        -- [ simpleCanvas
+        --     -- (width + 5)
+        --     -- (height + 5)
+        --     600
+        --     600
+
+        --     [ Svg.g []
+        --         [ Svg.path
+        --             [ SvgA.d connector
+        --             , SvgA.stroke "crimson"
+        --             , SvgA.fillOpacity "0"
+        --             , SvgA.strokeWidth "2"
+        --             ]
+        --             []
+        --         ]
+        --     , drawDot 5 height
+        --     , drawDot width height
+        --     ]
+        -- ]
 
 
 connectorSelector : Model -> Connector -> Html Msg
