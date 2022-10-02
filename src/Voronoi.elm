@@ -346,21 +346,21 @@ connectorSelector model connector =
             120
 
         height =
-            60
+            80
 
         normalizer =
-            LineSegment2d.from (Point2d.unitless 5 height) (Point2d.unitless width height)
+            LineSegment2d.from (Point2d.unitless 5 (height/2)) (Point2d.unitless width (height/2))
     in
     div
         [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
         ]
         [ simpleCanvas
             (width + 5)
-            (height + 5)
+            (height)
             [ fitConnector connector normalizer
                 |> drawConnector True
-            , drawDot 5 height
-            , drawDot width height
+            , drawDot 5 (round <| height/2)
+            , drawDot width (round <| height/2)
             ]
         ]
 
