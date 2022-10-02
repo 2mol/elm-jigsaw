@@ -258,17 +258,8 @@ view model =
 
 connectorSelectors : Model -> Html Msg
 connectorSelectors model =
-    let
-        bla =
-            Debug.log "path"
-                testWiggly
-    in
     [ connectorSelector model baseWiggly
-    , testWiggly
-        |> Result.toMaybe
-        |> Maybe.andThen extractConnectorPath
-        |> Maybe.withDefault ""
-        |> connectorSelectorSvg model
+    , connectorSelector model otherConnector
     ]
         |> div
             [ class "flex flex-row space-x-2"
@@ -321,30 +312,31 @@ connectorSelectorSvg model connector =
     div
         [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
         ]
-        [
-        testWiggly
-        |> Result.withDefault (SvgParser.SvgText "")
-        |> SvgParser.nodeToSvg
+        [ testWiggly
+            |> Result.withDefault (SvgParser.SvgText "")
+            |> SvgParser.nodeToSvg
         ]
-        -- [ simpleCanvas
-        --     -- (width + 5)
-        --     -- (height + 5)
-        --     600
-        --     600
 
-        --     [ Svg.g []
-        --         [ Svg.path
-        --             [ SvgA.d connector
-        --             , SvgA.stroke "crimson"
-        --             , SvgA.fillOpacity "0"
-        --             , SvgA.strokeWidth "2"
-        --             ]
-        --             []
-        --         ]
-        --     , drawDot 5 height
-        --     , drawDot width height
-        --     ]
-        -- ]
+
+
+-- [ simpleCanvas
+--     -- (width + 5)
+--     -- (height + 5)
+--     600
+--     600
+--     [ Svg.g []
+--         [ Svg.path
+--             [ SvgA.d connector
+--             , SvgA.stroke "crimson"
+--             , SvgA.fillOpacity "0"
+--             , SvgA.strokeWidth "2"
+--             ]
+--             []
+--         ]
+--     , drawDot 5 height
+--     , drawDot width height
+--     ]
+-- ]
 
 
 connectorSelector : Model -> Connector -> Html Msg
@@ -525,7 +517,7 @@ draw model =
         tongues =
             edgeSegments
                 |> List.filterMap (tongueFilterMap model.edgeTongues)
-                |> List.map (fitConnector baseWiggly)
+                |> List.map (fitConnector otherConnector)
                 |> List.map (drawConnector model.draftMode)
 
         edges =
@@ -649,11 +641,14 @@ drawEdge edgeTongues hoverThing edge =
     in
     Geometry.Svg.lineSegment2d
         [ SvgA.stroke
-            (if isBeingHoveredOver then
+            (if isBeingHoveredOver && edgeHasTongue edgeTongues edge then
+                "#999"
+
+             else if isBeingHoveredOver then
                 "crimson"
 
              else if edgeHasTongue edgeTongues edge then
-                "#aaa"
+                "#ccc"
 
              else
                 "black"
@@ -833,8 +828,40 @@ baseWiggly =
         mirroredBaseSpline =
             CubicSpline2d.mirrorAcross Axis2d.y baseSpline
                 |> CubicSpline2d.translateBy (Vector2d.unitless 300 0)
+                |> CubicSpline2d.reverse
     in
     ( baseSpline, [], mirroredBaseSpline )
+
+
+otherConnector : Connector
+otherConnector =
+    ( CubicSpline2d.fromControlPoints
+        (Point2d.unitless -673.1506622609302 -336.08828223251044)
+        (Point2d.unitless -412.32236311236807 -376.5467184031629)
+        (Point2d.unitless -121.89363762679241 -259.4513483915769)
+        (Point2d.unitless -178.7903504470044 -407.38280172412806)
+    , [ CubicSpline2d.fromControlPoints
+            (Point2d.unitless -178.7903504470044 -407.38280172412806)
+            (Point2d.unitless -227.46810870269897 -533.9449731889339)
+            (Point2d.unitless -441.92451764458133 -484.377343673999)
+            (Point2d.unitless -379.9856748422326 -606.4010922720101)
+      , CubicSpline2d.fromControlPoints
+            (Point2d.unitless -379.9856748422326 -606.4010922720101)
+            (Point2d.unitless -303.68264189813175 -756.7232760258798)
+            (Point2d.unitless 131.49707496125012 -927.2397860201629)
+            (Point2d.unitless 324.8791183706037 -816.3446201642428)
+      , CubicSpline2d.fromControlPoints
+            (Point2d.unitless 324.8791183706037 -816.3446201642428)
+            (Point2d.unitless 453.21284360343077 -742.751490762477)
+            (Point2d.unitless 181.52252270376036 -507.8894639452657)
+            (Point2d.unitless 177.76238322632344 -408.57148891685074)
+      ]
+    , CubicSpline2d.fromControlPoints
+        (Point2d.unitless 177.76238322632344 -408.57148891685074)
+        (Point2d.unitless 174.0022437488865 -309.2535138884358)
+        (Point2d.unitless 425.6134722463662 -370.67249098907445)
+        (Point2d.unitless 677.2247007438457 -432.0914680897131)
+    )
 
 
 fitConnector : Connector -> LineSegment2d Unitless () -> Connector
@@ -844,7 +871,7 @@ fitConnector ( w1, splines, w2 ) segment =
             CubicSpline2d.startPoint w1
 
         endPoint =
-            CubicSpline2d.startPoint w2
+            CubicSpline2d.endPoint w2
 
         pivot =
             startPoint
@@ -862,11 +889,18 @@ fitConnector ( w1, splines, w2 ) segment =
         translationVector =
             Vector2d.from pivot (LineSegment2d.startPoint segment)
 
-        rotationAngle =
+        connectorDir =
+            Vector2d.from startPoint endPoint
+                |> Vector2d.direction
+                |> Maybe.withDefault (Direction2d.radians 0)
+
+        segmentDir =
             LineSegment2d.vector segment
                 |> Vector2d.direction
                 |> Maybe.withDefault (Direction2d.radians 0)
-                |> Direction2d.toAngle
+
+        rotationAngle =
+            Direction2d.angleFrom connectorDir segmentDir
 
         fit w =
             scale w
