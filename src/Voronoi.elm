@@ -73,6 +73,7 @@ type alias Model =
       dragState : DragState
     , draftMode : Bool
     , hoveringOver : HoveringOverThing
+    , selectedTongue : Int
 
     -- Puzzle state
     , numberPieces : Int
@@ -91,6 +92,7 @@ init _ =
     ( { dragState = DraggingNothing
       , draftMode = True
       , hoveringOver = HoverNothing
+      , selectedTongue = 0
       , numberPieces = initNumberPieces
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
@@ -260,6 +262,7 @@ connectorSelectors : Model -> Html Msg
 connectorSelectors model =
     [ connectorSelector model baseWiggly
     , connectorSelector model otherConnector
+    , connectorSelector model wConnector
     ]
         |> div
             [ class "flex flex-row space-x-2"
@@ -349,18 +352,18 @@ connectorSelector model connector =
             80
 
         normalizer =
-            LineSegment2d.from (Point2d.unitless 5 (height/2)) (Point2d.unitless width (height/2))
+            LineSegment2d.from (Point2d.unitless 5 (height / 2)) (Point2d.unitless width (height / 2))
     in
     div
         [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
         ]
         [ simpleCanvas
             (width + 5)
-            (height)
+            height
             [ fitConnector connector normalizer
                 |> drawConnector True
-            , drawDot 5 (round <| height/2)
-            , drawDot width (round <| height/2)
+            , drawDot 5 (round <| height / 2)
+            , drawDot width (round <| height / 2)
             ]
         ]
 
@@ -517,7 +520,7 @@ draw model =
         tongues =
             edgeSegments
                 |> List.filterMap (tongueFilterMap model.edgeTongues)
-                |> List.map (fitConnector otherConnector)
+                |> List.map (fitConnector wConnector)
                 |> List.map (drawConnector model.draftMode)
 
         edges =
@@ -861,6 +864,36 @@ otherConnector =
         (Point2d.unitless 174.0022437488865 -309.2535138884358)
         (Point2d.unitless 425.6134722463662 -370.67249098907445)
         (Point2d.unitless 677.2247007438457 -432.0914680897131)
+    )
+
+wConnector : Connector
+wConnector =
+    ( CubicSpline2d.fromControlPoints
+        (Point2d.unitless 183.71383281146154 201.92756843684776)
+        (Point2d.unitless 206.74253566000846 165.9164365940892)
+        (Point2d.unitless 229.77123850855537 129.9053047513306)
+        (Point2d.unitless 235.7088804661762 155.9427369251132)
+    , [ CubicSpline2d.fromControlPoints
+            (Point2d.unitless 235.7088804661762 155.9427369251132)
+            (Point2d.unitless 241.64652242379702 181.9801690988958)
+            (Point2d.unitless 203.2578220546626 273.6272320736138)
+            (Point2d.unitless 238.44686782020062 270.6043048973007)
+      , CubicSpline2d.fromControlPoints
+            (Point2d.unitless 238.44686782020062 270.6043048973007)
+            (Point2d.unitless 262.6351636660783 268.526400956728)
+            (Point2d.unitless 277.2258775787624 171.00481124428285)
+            (Point2d.unitless 289.84089386061737 175.72302605345442)
+      , CubicSpline2d.fromControlPoints
+            (Point2d.unitless 289.84089386061737 175.72302605345442)
+            (Point2d.unitless 324.0999480499445 188.53645199066816)
+            (Point2d.unitless 311.9178886218489 237.50363859431775)
+            (Point2d.unitless 327.0641658394743 250.196282082915)
+      ]
+    , CubicSpline2d.fromControlPoints
+        (Point2d.unitless 327.0641658394743 250.196282082915)
+        (Point2d.unitless 342.2104430570997 262.88892557151223)
+        (Point2d.unitless 366.805316849104 218.08389853007736)
+        (Point2d.unitless 391.4001906411081 173.2788714886425)
     )
 
 
