@@ -78,7 +78,7 @@ type alias Model =
     -- Puzzle state
     , numberPieces : Int
     , voronoiPoints : Array ( Float, Float )
-    , edgeTongues : Dict ( Int, Int ) TongueOrientation
+    , edgeTongues : Dict ( Int, Int ) ( Int, TongueOrientation )
     }
 
 
@@ -128,11 +128,12 @@ type Msg
     | DragStart Int
     | DragMoving Int Bool Int Int
     | DragStop
-    | ToggleEdgeTongue ( Int, Int )
+    | ToggleEdgeTongue ( Int, Int ) Int
     | ToggleDraftMode
     | Randomize
     | HoverOverSomething HoveringOverThing
     | SetNumberPieces Int
+    | SetSelectedConnector Int
 
 
 updateModel : Msg -> Model -> Model
@@ -174,21 +175,29 @@ updateModel msg model =
             else
                 { model | dragState = DraggingNothing }
 
-        ToggleEdgeTongue midpointCoordinates ->
+        ToggleEdgeTongue midpointCoordinates tongueIdx ->
             let
                 currentState =
                     Dict.get midpointCoordinates model.edgeTongues
 
                 newEdgeTongues =
                     case currentState of
-                        Just Oneway ->
-                            Dict.insert midpointCoordinates Theotherway model.edgeTongues
+                        Just ( i, Oneway ) ->
+                            if i == tongueIdx then
+                                Dict.insert midpointCoordinates ( tongueIdx, Theotherway ) model.edgeTongues
 
-                        Just Theotherway ->
-                            Dict.remove midpointCoordinates model.edgeTongues
+                            else
+                                Dict.insert midpointCoordinates ( tongueIdx, Oneway ) model.edgeTongues
+
+                        Just ( i, Theotherway ) ->
+                            if i == tongueIdx then
+                                Dict.remove midpointCoordinates model.edgeTongues
+
+                            else
+                                Dict.insert midpointCoordinates ( tongueIdx, Oneway ) model.edgeTongues
 
                         Nothing ->
-                            Dict.insert midpointCoordinates Oneway model.edgeTongues
+                            Dict.insert midpointCoordinates ( tongueIdx, Oneway ) model.edgeTongues
             in
             { model | edgeTongues = newEdgeTongues }
 
@@ -201,13 +210,18 @@ updateModel msg model =
         SetNumberPieces n ->
             { model | numberPieces = n }
 
+        SetSelectedConnector i ->
+            { model | selectedTongue = i }
+
         _ ->
             model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let newModel = updateModel msg model
+    let
+        newModel =
+            updateModel msg model
     in
     case msg of
         Randomize ->
@@ -262,14 +276,17 @@ view model =
 
 connectorSelectors : Model -> Html Msg
 connectorSelectors model =
-    [ connectorSelector model baseWiggly
-    , connectorSelector model otherConnector
-    , connectorSelector model wConnector
-    ]
+    allConnectors
+        |> List.indexedMap (connectorSelector model)
         |> div
             [ class "flex flex-row space-x-2"
             , class "mt-2"
             ]
+
+
+allConnectors : List Connector
+allConnectors =
+    [ baseWiggly, otherConnector, wConnector ]
 
 
 testWiggly =
@@ -323,29 +340,8 @@ connectorSelectorSvg model connector =
         ]
 
 
-
--- [ simpleCanvas
---     -- (width + 5)
---     -- (height + 5)
---     600
---     600
---     [ Svg.g []
---         [ Svg.path
---             [ SvgA.d connector
---             , SvgA.stroke "crimson"
---             , SvgA.fillOpacity "0"
---             , SvgA.strokeWidth "2"
---             ]
---             []
---         ]
---     , drawDot 5 height
---     , drawDot width height
---     ]
--- ]
-
-
-connectorSelector : Model -> Connector -> Html Msg
-connectorSelector model connector =
+connectorSelector : Model -> Int -> Connector -> Html Msg
+connectorSelector model idx connector =
     let
         width =
             120
@@ -357,7 +353,13 @@ connectorSelector model connector =
             LineSegment2d.from (Point2d.unitless 5 (height / 2)) (Point2d.unitless width (height / 2))
     in
     div
-        [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
+        [ class "border-4 cursor-pointer"
+        , if idx == model.selectedTongue then
+            class "border-yellow-300"
+
+          else
+            class "border-gray-200 hover:border-yellow-200"
+        , HtmlE.onClick (SetSelectedConnector idx)
         ]
         [ simpleCanvas
             (width + 5)
@@ -522,7 +524,7 @@ draw model =
         tongues =
             edgeSegments
                 |> List.filterMap (tongueFilterMap model.edgeTongues)
-                |> List.map (fitConnector wConnector)
+                |> List.map (\e -> fitConnector (getEdgeConnector model.edgeTongues e) e)
                 |> List.map (drawConnector model.draftMode)
 
         edges =
@@ -537,7 +539,7 @@ draw model =
                 |> List.map (drawEdge model.edgeTongues model.hoveringOver)
 
         edgeTargets =
-            List.map drawEdgeTarget edgeSegments
+            List.map (drawEdgeTarget model.selectedTongue) edgeSegments
     in
     canvas model
         800
@@ -560,6 +562,14 @@ draw model =
             -- , Svg.g [] markerTargets
             ]
         )
+
+
+getEdgeConnector : Dict ( Int, Int ) ( Int, TongueOrientation ) -> LineSegment2d Unitless coordinates -> Connector
+getEdgeConnector edgeTongues edge =
+    Dict.get (lineMidpoint edge) edgeTongues
+        |> Maybe.map Tuple.first
+        |> Maybe.andThen (\i -> List.getAt i allConnectors)
+        |> Maybe.withDefault baseWiggly
 
 
 lineMidpoint : LineSegment2d Unitless coordinates -> ( Int, Int )
@@ -632,7 +642,7 @@ drawMarkerTarget idx ( xc, yc ) =
 
 
 drawEdge :
-    Dict ( Int, Int ) TongueOrientation
+    Dict ( Int, Int ) ( Int, TongueOrientation )
     -> HoveringOverThing
     -> LineSegment2d Unitless coordinates
     -> Svg Msg
@@ -663,10 +673,8 @@ drawEdge edgeTongues hoverThing edge =
         edge
 
 
-drawEdgeTarget :
-    LineSegment2d Unitless coordinates
-    -> Svg Msg
-drawEdgeTarget edge =
+drawEdgeTarget : Int -> LineSegment2d Unitless coordinates -> Svg Msg
+drawEdgeTarget selectedTongue edge =
     let
         midpoint =
             lineMidpoint edge
@@ -674,8 +682,6 @@ drawEdgeTarget edge =
     Geometry.Svg.lineSegment2d
         [ SvgA.strokeWidth "16"
         , SvgA.stroke "red"
-
-        -- , SvgA.strokeOpacity "0.2"
         , SvgA.strokeOpacity
             (if debugThis then
                 "0.2"
@@ -683,17 +689,17 @@ drawEdgeTarget edge =
              else
                 "0"
             )
-        , SvgE.onClick (ToggleEdgeTongue midpoint)
+        , SvgE.onClick (ToggleEdgeTongue midpoint selectedTongue)
         , SvgE.onMouseOver (HoverOverSomething <| HoverEdge midpoint)
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
         ]
         edge
 
 
-tongueFilterMap : Dict ( Int, Int ) TongueOrientation -> LineSegment2d Unitless coordinates -> Maybe (LineSegment2d Unitless coordinates)
+tongueFilterMap : Dict ( Int, Int ) ( Int, TongueOrientation ) -> LineSegment2d Unitless coordinates -> Maybe (LineSegment2d Unitless coordinates)
 tongueFilterMap edgeDict edge =
     let
-        flipIf orientation =
+        flipIf ( _, orientation ) =
             case orientation of
                 Oneway ->
                     edge
@@ -867,6 +873,7 @@ otherConnector =
         (Point2d.unitless 425.6134722463662 -370.67249098907445)
         (Point2d.unitless 677.2247007438457 -432.0914680897131)
     )
+
 
 wConnector : Connector
 wConnector =
