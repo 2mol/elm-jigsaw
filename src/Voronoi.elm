@@ -797,7 +797,7 @@ tile size xc yc =
     let
         col =
             if modBy 2 (xc + yc) == 0 then
-                "#eeeeee"
+                "#f3f3f3"
 
             else
                 "#ffffff"
