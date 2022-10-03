@@ -207,15 +207,17 @@ updateModel msg model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let newModel = updateModel msg model
+    in
     case msg of
         Randomize ->
-            ( model, Random.generate Init (genXYCoordinates model.numberPieces) )
+            ( newModel, Random.generate Init (genXYCoordinates model.numberPieces) )
 
         SetNumberPieces n ->
-            ( model, Random.generate Init (genXYCoordinates n) )
+            ( newModel, Random.generate Init (genXYCoordinates n) )
 
         _ ->
-            ( updateModel msg model, Cmd.none )
+            ( newModel, Cmd.none )
 
 
 
