@@ -267,7 +267,7 @@ decodeButtonZombieDrag =
 
 view : Model -> Html Msg
 view model =
-    div [ class "pt-6" ]
+    div [ class "py-6" ]
         [ buttonBar model
         , draw model
         , connectorSelectors model
