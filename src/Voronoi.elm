@@ -267,7 +267,7 @@ decodeButtonZombieDrag =
 
 view : Model -> Html Msg
 view model =
-    div [ class "py-6" ]
+    div [ class "p-6 w-full max-w-3xl" ]
         [ buttonBar model
         , draw model
         , connectorSelectors model
@@ -386,13 +386,15 @@ drawDot x y =
 
 buttonBar : Model -> Html Msg
 buttonBar model =
-    div [ class "flex space-x-2 py-2" ]
+    div [ class "flex flex-wrap gap-2 py-2" ]
         [ buttonToggleDraft model.draftMode
         , buttonRandomize
-        , buttonNumberPieces 20
-        , buttonNumberPieces 50
-        , buttonNumberPieces 100
-        , buttonNumberPieces 250
+        , div [ class "flex gap-0.5" ]
+            [ buttonNumberPieces 20
+            , buttonNumberPieces 50
+            , buttonNumberPieces 100
+            , buttonNumberPieces 250
+            ]
         ]
 
 
@@ -437,6 +439,7 @@ buttonToggleDraft : Bool -> Html Msg
 buttonToggleDraft draftMode =
     Html.button
         [ class "font-bold py-2 px-4 rounded"
+        , class "whitespace-nowrap"
         , class "text-center inline-flex items-center"
         , if draftMode then
             class "bg-blue-300 hover:bg-blue-200"
@@ -477,6 +480,7 @@ buttonRandomize : Html Msg
 buttonRandomize =
     Html.button
         [ class "bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded"
+        , class "whitespace-nowrap"
         , class "text-center inline-flex items-center"
         , HtmlE.onClick Randomize
         ]
@@ -763,8 +767,8 @@ canvas model w h children =
                 []
     in
     Svg.svg
-        [ SvgA.width wStr
-        , SvgA.height hStr
+        [ SvgA.width "100%"
+        , SvgA.height "auto"
         , SvgA.viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
         ]
         [ Svg.g []
