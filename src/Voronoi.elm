@@ -29,11 +29,6 @@ import Vector2d
 import VoronoiDiagram2d
 
 
-debugThis : Bool
-debugThis =
-    False
-
-
 
 -- MAIN
 
@@ -52,14 +47,14 @@ main =
 -- MODEL
 
 
-type DragInfo
-    = DragNothing
-    | DragPuzzlePieceControlPoint Int (Maybe ( Float, Float ))
-
-
 type TongueOrientation
     = Oneway
     | Theotherway
+
+
+type DragInfo
+    = DragNothing
+    | DragPuzzlePieceControlPoint Int (Maybe ( Float, Float ))
 
 
 type HoverInfo
@@ -70,15 +65,24 @@ type HoverInfo
 
 type MouseInteractionState
     = MouseNotDoingAnything
-    | MouseHoveringOverSomething HoverInfo
-    | MouseDraggingSomething DragInfo
+    | MouseHoverPuzzleEdge
+        -- Identify an edge by the (x, y) middle of the edge segment.
+        ( Int, Int )
+    | MouseHoverPuzzlePieceControlPoint ( Int, Int )
+    | MouseDragPuzzlePieceControlPoint
+        -- Index of the point in the state array of all points
+        Int
+        -- Coordinates of the mouse. The first message doesn't know the mouse
+        -- position yet, which is why there is a Maybe here.
+        (Maybe ( Float, Float ))
 
 
 type alias Model =
     { -- ephemereal UI state
-      dragState : DragInfo
-    , draftMode : Bool
+      mouseInteractionState : MouseInteractionState
+    , dragState : DragInfo
     , hoveringOver : HoverInfo
+    , draftMode : Bool
     , selectedTongue : Int
 
     -- Puzzle state
@@ -95,10 +99,14 @@ initNumberPieces =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { dragState = DragNothing
-      , draftMode = True
+    ( { -- ephemereal UI state
+        mouseInteractionState = MouseNotDoingAnything
+      , dragState = DragNothing
       , hoveringOver = HoverNothing
+      , draftMode = True
       , selectedTongue = 0
+
+      -- Puzzle state
       , numberPieces = initNumberPieces
       , voronoiPoints = Array.empty
       , edgeTongues = Dict.empty
@@ -299,55 +307,28 @@ allConnectors =
     ]
 
 
-testWiggly =
-    """
-<svg xmlns="http://www.w3.org/2000/svg" width="265.573" height="102.652"><g style="mix-blend-mode:normal"><path d="M-673.15-336.088c260.828-40.459 551.256 76.637 494.36-71.295-48.678-126.562-263.135-76.994-201.196-199.018 76.303-150.322 511.483-320.839 704.865-209.944C453.213-742.75 181.523-507.889 177.762-408.57c-3.76 99.317 247.851 37.899 499.463-23.52" fill="none" stroke="#000" stroke-width="5" stroke-dasharray="0" transform="matrix(.19667 0 0 .19667 132.386 167.539)" style="mix-blend-mode:normal"/></g></svg>
-    """
-        |> SvgParser.parseToNode
 
-
-
+-- testWiggly =
+--     """
+-- <svg xmlns="http://www.w3.org/2000/svg" width="265.573" height="102.652"><g style="mix-blend-mode:normal"><path d="M-673.15-336.088c260.828-40.459 551.256 76.637 494.36-71.295-48.678-126.562-263.135-76.994-201.196-199.018 76.303-150.322 511.483-320.839 704.865-209.944C453.213-742.75 181.523-507.889 177.762-408.57c-3.76 99.317 247.851 37.899 499.463-23.52" fill="none" stroke="#000" stroke-width="5" stroke-dasharray="0" transform="matrix(.19667 0 0 .19667 132.386 167.539)" style="mix-blend-mode:normal"/></g></svg>
+--     """
+--         |> SvgParser.parseToNode
 -- |> Result.withDefault (SvgParser.SvgText "")
 -- |> extractConnectorSvg
 -- |> SvgParser.nodeToSvg
-
-
-extractConnectorPath : SvgParser.SvgNode -> Maybe String
-extractConnectorPath node =
-    case node of
-        SvgParser.SvgElement element ->
-            if element.name == "path" then
-                List.filter (\( attr, _ ) -> attr == "d") element.attributes
-                    |> List.head
-                    |> Maybe.map Tuple.second
-
-            else
-                List.filterMap extractConnectorPath element.children
-                    |> List.head
-
-        _ ->
-            Nothing
-
-
-connectorSelectorSvg : Model -> String -> Html Msg
-connectorSelectorSvg model connector =
-    let
-        width =
-            120
-
-        height =
-            60
-
-        normalizer =
-            LineSegment2d.from (Point2d.unitless 5 height) (Point2d.unitless width height)
-    in
-    div
-        [ class "border-4 border-yellow-400 hover:border-yellow-500 cursor-pointer"
-        ]
-        [ testWiggly
-            |> Result.withDefault (SvgParser.SvgText "")
-            |> SvgParser.nodeToSvg
-        ]
+-- extractConnectorPath : SvgParser.SvgNode -> Maybe String
+-- extractConnectorPath node =
+--     case node of
+--         SvgParser.SvgElement element ->
+--             if element.name == "path" then
+--                 List.filter (\( attr, _ ) -> attr == "d") element.attributes
+--                     |> List.head
+--                     |> Maybe.map Tuple.second
+--             else
+--                 List.filterMap extractConnectorPath element.children
+--                     |> List.head
+--         _ ->
+--             Nothing
 
 
 connectorSelector : Model -> Int -> Connector -> Html Msg
@@ -703,13 +684,7 @@ drawMarkerTarget idx ( xc, yc ) =
         , SvgA.cy <| String.fromInt yc
         , SvgA.r "8"
         , SvgA.fill "red"
-        , SvgA.fillOpacity
-            (if debugThis then
-                "0.2"
-
-             else
-                "0"
-            )
+        , SvgA.fillOpacity "0"
         , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
         , SvgE.onMouseOver (HoverOverSomething <| HoverPuzzlePieceControlPoint ( xc, yc ))
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
@@ -758,13 +733,7 @@ drawEdgeTarget selectedTongue edge =
     Geometry.Svg.lineSegment2d
         [ SvgA.strokeWidth "16"
         , SvgA.stroke "red"
-        , SvgA.strokeOpacity
-            (if debugThis then
-                "0.2"
-
-             else
-                "0"
-            )
+        , SvgA.strokeOpacity "0"
         , SvgE.onClick (ToggleEdgeTongue midpoint selectedTongue)
         , SvgE.onMouseOver (HoverOverSomething <| HoverPuzzleEdge midpoint)
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
