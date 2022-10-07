@@ -279,14 +279,17 @@ connectorSelectors model =
     allConnectors
         |> List.indexedMap (connectorSelector model)
         |> div
-            [ class "flex flex-row space-x-2"
+            [ class "flex flex-wrap gap-2"
             , class "mt-2"
             ]
 
 
 allConnectors : List Connector
 allConnectors =
-    [ baseWiggly, otherConnector, wConnector ]
+    [ baseWiggly
+    , otherConnector
+    , wConnector
+    ]
 
 
 testWiggly =
@@ -349,25 +352,31 @@ connectorSelector model idx connector =
         height =
             80
 
-        normalizer =
+        normalizerSegment =
             LineSegment2d.from (Point2d.unitless 5 (height / 2)) (Point2d.unitless width (height / 2))
+
+        normalizedConnector = fitConnector connector normalizerSegment
+
+        (c0, _, _) = normalizedConnector
+
+        (blax, blay) = CubicSpline2d.firstControlPoint c0 |> Point2d.coordinates |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat |> Tuple.mapBoth round round
     in
     div
-        [ class "border-4 cursor-pointer"
+        [ class "border-2 cursor-pointer"
         , if idx == model.selectedTongue then
-            class "border-yellow-300"
+            class "border-yellow-400"
 
           else
-            class "border-gray-200 hover:border-yellow-200"
+            class "border-gray-200 hover:border-gray-300"
         , HtmlE.onClick (SetSelectedConnector idx)
         ]
         [ simpleCanvas
             (width + 5)
             height
-            [ fitConnector connector normalizer
-                |> drawConnector True
+            [ drawConnector True normalizedConnector
             , drawDot 5 (round <| height / 2)
             , drawDot width (round <| height / 2)
+            -- , drawDot blax blay
             ]
         ]
 
