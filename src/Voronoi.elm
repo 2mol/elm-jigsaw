@@ -355,11 +355,13 @@ connectorSelector model idx connector =
         normalizerSegment =
             LineSegment2d.from (Point2d.unitless 5 (height / 2)) (Point2d.unitless width (height / 2))
 
-        normalizedConnector = fitConnector connector normalizerSegment
+        normalizedConnector =
+            fitConnector connector normalizerSegment
 
-        (c0, _, _) = normalizedConnector
+        ( c0, _, cn ) =
+            normalizedConnector
 
-        (blax, blay) = CubicSpline2d.firstControlPoint c0 |> Point2d.coordinates |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat |> Tuple.mapBoth round round
+        -- (blax, blay) = CubicSpline2d.secondControlPoint c0 |> Point2d.coordinates |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat |> Tuple.mapBoth round round
     in
     div
         [ class "border-2 cursor-pointer"
@@ -376,9 +378,41 @@ connectorSelector model idx connector =
             [ drawConnector True normalizedConnector
             , drawDot 5 (round <| height / 2)
             , drawDot width (round <| height / 2)
-            -- , drawDot blax blay
+            , Svg.g [] <| drawControlPoints c0
             ]
         ]
+
+
+drawControlPoints : CubicSpline2d Unitless () -> List (Svg Msg)
+drawControlPoints spline =
+    List.append
+        (drawControlPoint (CubicSpline2d.firstControlPoint spline) (CubicSpline2d.secondControlPoint spline))
+        (drawControlPoint (CubicSpline2d.fourthControlPoint spline) (CubicSpline2d.thirdControlPoint spline))
+
+
+drawControlPoint pointAnchor pointHandle =
+    let
+        ( x0, y0 ) =
+            pointToXY pointAnchor
+
+        ( x1, y1 ) =
+            pointToXY pointHandle
+    in
+    [ drawHollowDot x1 y1
+    , Svg.line
+        [ SvgA.x1 (String.fromInt x0)
+        , SvgA.y1 (String.fromInt y0)
+        , SvgA.x2 (String.fromInt x1)
+        , SvgA.y2 (String.fromInt y1)
+        , SvgA.strokeWidth "1"
+        , SvgA.stroke "#aaa"
+        ]
+        []
+    ]
+
+
+pointToXY point =
+    Point2d.coordinates point |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat |> Tuple.mapBoth round round
 
 
 drawDot : Int -> Int -> Svg msg
@@ -386,9 +420,22 @@ drawDot x y =
     Svg.circle
         [ SvgA.cx (String.fromInt x)
         , SvgA.cy (String.fromInt y)
-        , SvgA.r "3"
+        , SvgA.r "2"
         , SvgA.fill "black"
         , SvgA.fillOpacity "1"
+        ]
+        []
+
+
+drawHollowDot : Int -> Int -> Svg Msg
+drawHollowDot x y =
+    Svg.circle
+        [ SvgA.cx (String.fromInt x)
+        , SvgA.cy (String.fromInt y)
+        , SvgA.r "2"
+        , SvgA.stroke "black"
+        , SvgA.strokeWidth "1"
+        , SvgA.fillOpacity "0"
         ]
         []
 
