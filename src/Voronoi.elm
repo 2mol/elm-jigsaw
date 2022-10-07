@@ -133,7 +133,7 @@ type Msg
     | Randomize
     | HoverOverSomething HoveringOverThing
     | SetNumberPieces Int
-    | SetSelectedConnector Int
+    | SetActiveConnector Int
 
 
 updateModel : Msg -> Model -> Model
@@ -210,7 +210,7 @@ updateModel msg model =
         SetNumberPieces n ->
             { model | numberPieces = n }
 
-        SetSelectedConnector i ->
+        SetActiveConnector i ->
             { model | selectedTongue = i }
 
         _ ->
@@ -365,7 +365,7 @@ connectorSelector model idx connector =
 
           else
             class "border-gray-200 hover:border-gray-300"
-        , HtmlE.onClick (SetSelectedConnector idx)
+        , HtmlE.onClick (SetActiveConnector idx)
         ]
         [ simpleCanvas
             (width + 5)
