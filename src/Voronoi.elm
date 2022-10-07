@@ -334,6 +334,9 @@ allConnectors =
 connectorSelector : Model -> Int -> Connector -> Html Msg
 connectorSelector model idx connector =
     let
+        isTheChosenOne =
+            idx == model.selectedTongue
+
         width =
             120
 
@@ -347,12 +350,17 @@ connectorSelector model idx connector =
             fitConnector connector normalizerSegment
     in
     div
-        [ class "border-2 cursor-pointer"
-        , if idx == model.selectedTongue then
+        [ class "border-2"
+        , if isTheChosenOne then
             class "border-yellow-400"
 
           else
             class "border-gray-200 hover:border-gray-300"
+        , if isTheChosenOne then
+            class ""
+
+          else
+            class "cursor-pointer"
         , HtmlE.onClick (SetActiveConnector idx)
         ]
         [ simpleCanvas
@@ -361,7 +369,9 @@ connectorSelector model idx connector =
             [ drawConnector True normalizedConnector
             , drawDot 5 (round <| height / 2)
             , drawDot width (round <| height / 2)
-            , Svg.g [] (drawAllControlPoints normalizedConnector)
+            , if isTheChosenOne then
+                Svg.g [] (drawAllControlPoints normalizedConnector)
+              else Svg.g [] []
             ]
         ]
 
