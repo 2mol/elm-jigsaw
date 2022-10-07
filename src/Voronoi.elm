@@ -96,11 +96,16 @@ initNumberPieces : Int
 initNumberPieces =
     100
 
+
 puzzleWidth : number
-puzzleWidth = 800
+puzzleWidth =
+    800
+
 
 puzzleHeight : number
-puzzleHeight = 600
+puzzleHeight =
+    600
+
 
 init : () -> ( Model, Cmd Msg )
 init _ =
@@ -289,6 +294,7 @@ view : Model -> Html Msg
 view model =
     div
         [ class "p-6"
+
         -- , class "w-full max-w-3xl"
         ]
         [ buttonBar model
@@ -375,11 +381,13 @@ connectorSelector model idx connector =
             (width + 5)
             height
             [ drawConnector True normalizedConnector
-            , drawDot 5 (round <| height / 2)
-            , drawDot width (round <| height / 2)
+            , drawAnchorPointDot 5 (round <| height / 2)
+            , drawAnchorPointDot width (round <| height / 2)
             , if isTheChosenOne then
                 Svg.g [] (drawAllControlPoints normalizedConnector)
-              else Svg.g [] []
+
+              else
+                Svg.g [] []
             ]
         ]
 
@@ -402,6 +410,7 @@ drawControlPoints spline =
         (drawControlPoint (CubicSpline2d.fourthControlPoint spline) (CubicSpline2d.thirdControlPoint spline))
 
 
+drawControlPoint : Point2d.Point2d Unitless coordinates -> Point2d.Point2d Unitless coordinates -> List (Svg Msg)
 drawControlPoint pointAnchor pointHandle =
     let
         ( x0, y0 ) =
@@ -420,8 +429,8 @@ drawControlPoint pointAnchor pointHandle =
         , SvgA.strokeDasharray "1"
         ]
         []
-    , drawHollowDot x1 y1
-    , drawDot x0 y0
+    , drawHollowControlPointDot x1 y1
+    , drawAnchorPointDot x0 y0
     ]
 
 
@@ -431,8 +440,8 @@ pointToXY point =
         |> Tuple.mapBoth round round
 
 
-drawDot : Int -> Int -> Svg msg
-drawDot x y =
+drawAnchorPointDot : Int -> Int -> Svg msg
+drawAnchorPointDot x y =
     Svg.circle
         [ SvgA.cx (String.fromInt x)
         , SvgA.cy (String.fromInt y)
@@ -443,15 +452,17 @@ drawDot x y =
         []
 
 
-drawHollowDot : Int -> Int -> Svg Msg
-drawHollowDot x y =
+drawHollowControlPointDot : Int -> Int -> Svg Msg
+drawHollowControlPointDot x y =
     Svg.circle
         [ SvgA.cx (String.fromInt x)
         , SvgA.cy (String.fromInt y)
         , SvgA.r "2"
         , SvgA.stroke "black"
         , SvgA.strokeWidth "1"
+        , SvgA.fill "crimson"
         , SvgA.fillOpacity "0"
+        , SvgA.class "cursor-pointer"
         ]
         []
 
@@ -704,6 +715,7 @@ drawMarkerTarget idx ( xc, yc ) =
         , SvgA.r "8"
         , SvgA.fill "red"
         , SvgA.fillOpacity "0"
+        , SvgA.class "cursor-pointer"
         , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
         , SvgE.onMouseOver (HoverOverSomething <| HoverPuzzlePieceControlPoint ( xc, yc ))
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
@@ -753,6 +765,7 @@ drawEdgeTarget selectedTongue edge =
         [ SvgA.strokeWidth "16"
         , SvgA.stroke "red"
         , SvgA.strokeOpacity "0"
+        , SvgA.class "cursor-pointer"
         , SvgE.onClick (ToggleEdgeTongue midpoint selectedTongue)
         , SvgE.onMouseOver (HoverOverSomething <| HoverPuzzleEdge midpoint)
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
