@@ -357,11 +357,6 @@ connectorSelector model idx connector =
 
         normalizedConnector =
             fitConnector connector normalizerSegment
-
-        ( c0, _, cn ) =
-            normalizedConnector
-
-        -- (blax, blay) = CubicSpline2d.secondControlPoint c0 |> Point2d.coordinates |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat |> Tuple.mapBoth round round
     in
     div
         [ class "border-2 cursor-pointer"
@@ -378,9 +373,20 @@ connectorSelector model idx connector =
             [ drawConnector True normalizedConnector
             , drawDot 5 (round <| height / 2)
             , drawDot width (round <| height / 2)
-            , Svg.g [] <| drawControlPoints c0
+            , Svg.g [] (drawAllControlPoints normalizedConnector)
             ]
         ]
+
+
+drawAllControlPoints conn =
+    let
+        ( c0, cs, cn ) =
+            conn
+    in
+    drawControlPoints c0
+        :: drawControlPoints cn
+        :: List.map drawControlPoints cs
+        |> List.concat
 
 
 drawControlPoints : CubicSpline2d Unitless () -> List (Svg Msg)
@@ -399,6 +405,7 @@ drawControlPoint pointAnchor pointHandle =
             pointToXY pointHandle
     in
     [ drawHollowDot x1 y1
+    , drawDot x0 y0
     , Svg.line
         [ SvgA.x1 (String.fromInt x0)
         , SvgA.y1 (String.fromInt y0)
@@ -412,7 +419,9 @@ drawControlPoint pointAnchor pointHandle =
 
 
 pointToXY point =
-    Point2d.coordinates point |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat |> Tuple.mapBoth round round
+    Point2d.coordinates point
+        |> Tuple.mapBoth Quantity.toFloat Quantity.toFloat
+        |> Tuple.mapBoth round round
 
 
 drawDot : Int -> Int -> Svg msg
