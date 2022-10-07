@@ -150,6 +150,7 @@ updateModel msg model =
             { model | dragState = DraggingNothing }
 
         DragMoving idx isDown x y ->
+            -- TODO: move edges based on approximated nearest segment middle
             if isDown then
                 let
                     dragState =
