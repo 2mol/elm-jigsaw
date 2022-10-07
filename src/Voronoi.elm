@@ -392,17 +392,18 @@ drawControlPoint pointAnchor pointHandle =
         ( x1, y1 ) =
             pointToXY pointHandle
     in
-    [ drawHollowDot x1 y1
-    , drawDot x0 y0
-    , Svg.line
+    [ Svg.line
         [ SvgA.x1 (String.fromInt x0)
         , SvgA.y1 (String.fromInt y0)
         , SvgA.x2 (String.fromInt x1)
         , SvgA.y2 (String.fromInt y1)
         , SvgA.strokeWidth "1"
         , SvgA.stroke "#aaa"
+        , SvgA.strokeDasharray "1"
         ]
         []
+    , drawHollowDot x1 y1
+    , drawDot x0 y0
     ]
 
 
