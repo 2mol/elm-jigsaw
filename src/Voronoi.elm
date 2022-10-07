@@ -52,9 +52,9 @@ main =
 -- MODEL
 
 
-type DragState
-    = DraggingNothing
-    | DraggingMarker Int (Maybe ( Float, Float ))
+type DragInfo
+    = DragNothing
+    | DragPuzzlePieceControlPoint Int (Maybe ( Float, Float ))
 
 
 type TongueOrientation
@@ -62,17 +62,23 @@ type TongueOrientation
     | Theotherway
 
 
-type HoveringOverThing
-    = HoverEdge ( Int, Int )
-    | HoverMarker ( Int, Int )
+type HoverInfo
+    = HoverPuzzleEdge ( Int, Int )
+    | HoverPuzzlePieceControlPoint ( Int, Int )
     | HoverNothing
+
+
+type MouseInteractionState
+    = NotDoingAnything
+    | HoveringOverSomething HoverInfo
+    | DraggingSomething
 
 
 type alias Model =
     { -- ephemereal UI state
-      dragState : DragState
+      dragState : DragInfo
     , draftMode : Bool
-    , hoveringOver : HoveringOverThing
+    , hoveringOver : HoverInfo
     , selectedTongue : Int
 
     -- Puzzle state
@@ -89,7 +95,7 @@ initNumberPieces =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { dragState = DraggingNothing
+    ( { dragState = DragNothing
       , draftMode = True
       , hoveringOver = HoverNothing
       , selectedTongue = 0
@@ -131,7 +137,7 @@ type Msg
     | ToggleEdgeTongue ( Int, Int ) Int
     | ToggleDraftMode
     | Randomize
-    | HoverOverSomething HoveringOverThing
+    | HoverOverSomething HoverInfo
     | SetNumberPieces Int
     | SetActiveConnector Int
 
@@ -143,11 +149,11 @@ updateModel msg model =
             { model | voronoiPoints = List.unique coord |> Array.fromList }
 
         DragStart idx ->
-            { model | dragState = DraggingMarker idx Nothing }
+            { model | dragState = DragPuzzlePieceControlPoint idx Nothing }
 
         DragStop ->
             -- TODO: prune dict of edge connectors here
-            { model | dragState = DraggingNothing }
+            { model | dragState = DragNothing }
 
         DragMoving idx isDown x y ->
             -- TODO: move edges based on approximated nearest segment middle
@@ -155,9 +161,9 @@ updateModel msg model =
                 let
                     dragState =
                         case model.dragState of
-                            DraggingMarker _ Nothing ->
+                            DragPuzzlePieceControlPoint _ Nothing ->
                                 -- Saving the first offset x,y coordinates so that we can take the relative diff
-                                DraggingMarker idx (Maybe.map (\( px, py ) -> ( toFloat x - px, toFloat y - py )) (Array.get idx model.voronoiPoints))
+                                DragPuzzlePieceControlPoint idx (Maybe.map (\( px, py ) -> ( toFloat x - px, toFloat y - py )) (Array.get idx model.voronoiPoints))
 
                             _ ->
                                 model.dragState
@@ -166,7 +172,7 @@ updateModel msg model =
                     | dragState = dragState
                     , voronoiPoints =
                         case dragState of
-                            DraggingMarker _ (Just ( offsetX, offsetY )) ->
+                            DragPuzzlePieceControlPoint _ (Just ( offsetX, offsetY )) ->
                                 Array.set idx ( toFloat x - offsetX, toFloat y - offsetY ) model.voronoiPoints
 
                             _ ->
@@ -174,7 +180,7 @@ updateModel msg model =
                 }
 
             else
-                { model | dragState = DraggingNothing }
+                { model | dragState = DragNothing }
 
         ToggleEdgeTongue midpointCoordinates tongueIdx ->
             let
@@ -242,10 +248,10 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.dragState of
-        DraggingNothing ->
+        DragNothing ->
             Sub.none
 
-        DraggingMarker idx _ ->
+        DragPuzzlePieceControlPoint idx _ ->
             Sub.batch
                 [ E.onMouseMove
                     (Decode.map3 (DragMoving idx)
@@ -660,11 +666,11 @@ edgeHasTongue edgeTongues edge =
 -- SVG HELPERS
 
 
-drawMarker : HoveringOverThing -> ( Int, Int ) -> Svg Msg
+drawMarker : HoverInfo -> ( Int, Int ) -> Svg Msg
 drawMarker hoverThing ( xc, yc ) =
     let
         isBeingHoveredOver =
-            hoverThing == HoverMarker ( xc, yc )
+            hoverThing == HoverPuzzlePieceControlPoint ( xc, yc )
     in
     Svg.circle
         [ SvgA.cx <| String.fromInt xc
@@ -705,7 +711,7 @@ drawMarkerTarget idx ( xc, yc ) =
                 "0"
             )
         , SvgE.on "mousedown" (Decode.succeed (DragStart idx))
-        , SvgE.onMouseOver (HoverOverSomething <| HoverMarker ( xc, yc ))
+        , SvgE.onMouseOver (HoverOverSomething <| HoverPuzzlePieceControlPoint ( xc, yc ))
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
         ]
         []
@@ -713,7 +719,7 @@ drawMarkerTarget idx ( xc, yc ) =
 
 drawEdge :
     Dict ( Int, Int ) ( Int, TongueOrientation )
-    -> HoveringOverThing
+    -> HoverInfo
     -> LineSegment2d Unitless coordinates
     -> Svg Msg
 drawEdge edgeTongues hoverThing edge =
@@ -722,7 +728,7 @@ drawEdge edgeTongues hoverThing edge =
             lineMidpoint edge
 
         isBeingHoveredOver =
-            hoverThing == HoverEdge midpoint
+            hoverThing == HoverPuzzleEdge midpoint
     in
     Geometry.Svg.lineSegment2d
         [ SvgA.stroke
@@ -760,7 +766,7 @@ drawEdgeTarget selectedTongue edge =
                 "0"
             )
         , SvgE.onClick (ToggleEdgeTongue midpoint selectedTongue)
-        , SvgE.onMouseOver (HoverOverSomething <| HoverEdge midpoint)
+        , SvgE.onMouseOver (HoverOverSomething <| HoverPuzzleEdge midpoint)
         , SvgE.onMouseOut (HoverOverSomething HoverNothing)
         ]
         edge
