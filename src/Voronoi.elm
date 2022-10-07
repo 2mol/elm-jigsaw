@@ -96,6 +96,11 @@ initNumberPieces : Int
 initNumberPieces =
     100
 
+puzzleWidth : number
+puzzleWidth = 800
+
+puzzleHeight : number
+puzzleHeight = 600
 
 init : () -> ( Model, Cmd Msg )
 init _ =
@@ -117,13 +122,13 @@ init _ =
 
 genXCoordinates : Int -> Random.Generator (List Float)
 genXCoordinates n =
-    Random.list n (Random.int 0 800)
+    Random.list n (Random.int 0 puzzleWidth)
         |> (Random.map << List.map) toFloat
 
 
 genYCoordinates : Int -> Random.Generator (List Float)
 genYCoordinates n =
-    Random.list n (Random.int 0 600)
+    Random.list n (Random.int 0 puzzleHeight)
         |> (Random.map << List.map) toFloat
 
 
@@ -282,7 +287,10 @@ decodeButtonZombieDrag =
 
 view : Model -> Html Msg
 view model =
-    div [ class "p-6 w-full max-w-3xl" ]
+    div
+        [ class "p-6"
+        -- , class "w-full max-w-3xl"
+        ]
         [ buttonBar model
         , draw model
         , connectorSelectors model
@@ -581,7 +589,7 @@ draw model =
 
         polygons =
             VoronoiDiagram2d.polygons
-                (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless 800 600))
+                (BoundingBox2d.from (Point2d.unitless 0 0) (Point2d.unitless puzzleWidth puzzleHeight))
                 voronoi
 
         edgeSegments =
@@ -610,8 +618,8 @@ draw model =
             List.map (drawEdgeTarget model.selectedTongue) edgeSegments
     in
     canvas model
-        800
-        600
+        puzzleWidth
+        puzzleHeight
         (if model.draftMode then
             [ Svg.g [] edges
             , Svg.g [] markers
@@ -819,8 +827,8 @@ canvas model w h children =
                 []
     in
     Svg.svg
-        [ SvgA.width "100%"
-        , SvgA.height "auto"
+        [ SvgA.width wStr
+        , SvgA.height hStr
         , SvgA.viewBox <| "0 0 " ++ wStr ++ " " ++ hStr
         ]
         [ Svg.g []
