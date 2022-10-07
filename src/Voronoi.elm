@@ -69,9 +69,9 @@ type HoverInfo
 
 
 type MouseInteractionState
-    = NotDoingAnything
-    | HoveringOverSomething HoverInfo
-    | DraggingSomething
+    = MouseNotDoingAnything
+    | MouseHoveringOverSomething HoverInfo
+    | MouseDraggingSomething DragInfo
 
 
 type alias Model =
